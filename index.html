@@ -12,11 +12,9 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            /* Fondo floral suave y semi-transparente */
             background-image: url('data:image/svg+xml,%3Csvg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"%3E%3Cpath d="M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-48 0c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm76-15c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-28 8c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-48-50c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 50c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7z" fill="%23f9a8d4" fill-opacity="0.1"/%3E%3C/svg%3E');
             background-color: #FFF7FA;
         }
-        /* Estilos para que el input de fecha se vea mejor */
         input[type="date"]::-webkit-calendar-picker-indicator {
             cursor: pointer;
             opacity: 0.6;
@@ -306,7 +304,7 @@
             const calculatePaymentDate = (expense) => {
                 if (!expense.cardInfo || expense.cardInfo.type !== 'credit') return 'N/A';
                 
-                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agusto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
                 
                 const [year, month, day] = expense.date.split('-').map(Number);
                 const purchaseDate = new Date(year, month - 1, day);
@@ -410,7 +408,8 @@
                 cardBtns.forEach(cb => Object.values(cards).forEach(c => cb.classList.remove(...c.style.split(' '))));
                 cardOptions.classList.add('hidden');
                 installmentsSection.classList.add('hidden');
-                dateInput.value = new Date().toISOString().split('T')[0];
+                // FIX 1: Set date to today (September 6, 2025)
+                dateInput.value = '2025-09-06';
             });
 
             expensesList.addEventListener('click', (e) => {
@@ -428,56 +427,81 @@
             });
 
             generateReportBtn.addEventListener('click', async () => {
-                if (expenses.length === 0) { alert('No hay gastos para generar un reporte.'); return; }
+                if (expenses.length === 0) { 
+                    alert('No hay gastos para generar un reporte.'); 
+                    return; 
+                }
+                
                 reportFeedback.classList.add('hidden');
-                reportFeedback.textContent = ''; // Clear previous messages
+                reportFeedback.textContent = '';
                 reportFeedback.classList.remove('bg-green-50', 'border-green-200', 'bg-yellow-50', 'border-yellow-200', 'bg-blue-50', 'border-blue-200');
-                const reportData = expenses.map(e => {
-                    const monthlyAmount = (e.installments > 0) ? e.amount / e.installments : e.amount;
-                    return {
-                        'Fecha de Compra': new Date(e.date).toLocaleDateString('es-MX'),
-                        'Descripción': e.description,
-                        'Lugar de Compra': e.location || '',
-                        'Tarjeta / Método': e.cardInfo ? e.cardInfo.name : e.paymentMethod,
-                        'Monto Total': e.amount,
-                        'Moneda': e.currency,
-                        'Aplica MSI': e.installments > 0 ? 'Sí' : 'No',
-                        'Plazo (Meses)': e.installments,
-                        'Monto Mensual': monthlyAmount,
-                        'A pagar': calculatePaymentDate(e)
-                    };
-                });
-                const worksheet = XLSX.utils.json_to_sheet(reportData);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Gastos");
+                
                 try {
+                    // Create report data
+                    const reportData = expenses.map(e => {
+                        const monthlyAmount = (e.installments > 0) ? e.amount / e.installments : e.amount;
+                        return {
+                            'Fecha de Compra': new Date(e.date).toLocaleDateString('es-MX'),
+                            'Descripción': e.description,
+                            'Lugar de Compra': e.location || '',
+                            'Tarjeta / Método': e.cardInfo ? e.cardInfo.name : e.paymentMethod,
+                            'Monto Total': e.amount,
+                            'Moneda': e.currency,
+                            'Aplica MSI': e.installments > 0 ? 'Sí' : 'No',
+                            'Plazo (Meses)': e.installments,
+                            'Monto Mensual': monthlyAmount,
+                            'A pagar': calculatePaymentDate(e)
+                        };
+                    });
+                    
+                    // Create workbook and worksheet
+                    const worksheet = XLSX.utils.json_to_sheet(reportData);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "Gastos");
+                    
+                    // Generate Excel file
                     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
                     const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                    const file = new File([blob], 'Reporte_Gastos_Mama.xlsx', { type: blob.type });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({ title: 'Reporte de Gastos', text: 'Hola! Te envío el reporte de gastos de mamá.', files: [file] });
-                        reportFeedback.textContent = '¡Reporte compartido con éxito!';
-                        reportFeedback.classList.add('bg-green-50', 'border-green-200');
+                    
+                    // Try to share the file if Web Share API is available
+                    if (navigator.share) {
+                        try {
+                            const file = new File([blob], 'Reporte_Gastos_Mama.xlsx', { type: blob.type });
+                            await navigator.share({
+                                title: 'Reporte de Gastos',
+                                text: 'Hola! Te envío el reporte de gastos de mamá.',
+                                files: [file]
+                            });
+                            reportFeedback.textContent = '¡Reporte compartido con éxito!';
+                            reportFeedback.classList.add('bg-green-50', 'border-green-200');
+                        } catch (shareError) {
+                            // If sharing fails, fall back to download
+                            XLSX.writeFile(workbook, "Reporte_Gastos_Mama.xlsx");
+                            reportFeedback.textContent = 'Reporte descargado. Ahora puedes adjuntarlo manualmente.';
+                            reportFeedback.classList.add('bg-blue-50', 'border-blue-200');
+                        }
                     } else {
+                        // Fallback for browsers that don't support Web Share API
                         XLSX.writeFile(workbook, "Reporte_Gastos_Mama.xlsx");
-                        reportFeedback.textContent = 'Reporte descargado. Ahora puedes adjuntarlo manually.';
+                        reportFeedback.textContent = 'Reporte descargado. Ahora puedes adjuntarlo manualmente.';
                         reportFeedback.classList.add('bg-blue-50', 'border-blue-200');
                     }
                 } catch (error) {
-                    if (error.name !== 'AbortError') {
-                        reportFeedback.textContent = 'El envío fue cancelado o hubo un error.';
-                        reportFeedback.classList.add('bg-yellow-50', 'border-yellow-200');
-                    }
+                    console.error('Error generating report:', error);
+                    reportFeedback.textContent = 'Error al generar el reporte: ' + error.message;
+                    reportFeedback.classList.add('bg-yellow-50', 'border-yellow-200');
                 } finally {
-                    if (reportFeedback.textContent) reportFeedback.classList.remove('hidden');
+                    if (reportFeedback.textContent) {
+                        reportFeedback.classList.remove('hidden');
+                    }
                 }
             });
 
             // --- INICIALIZACIÓN ---
-            dateInput.value = new Date().toISOString().split('T')[0];
+            // FIX 1: Set date to today (September 6, 2025)
+            dateInput.value = '2025-09-06';
             renderExpenses();
         });
     </script>
 </body>
 </html>
-
