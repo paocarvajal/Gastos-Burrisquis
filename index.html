@@ -25,6 +25,7 @@
             opacity: 0.6;
             filter: invert(0.8);
         }
+        /* Animación para la flechita del colapsable */
         .rotate-180 {
             transform: rotate(180deg);
         }
@@ -189,7 +190,7 @@
             </form>
         </div>
 
-        <!-- Listado de Gastos (NUEVA VERSIÓN) -->
+        <!-- Listado de Gastos (NUEVA VERSIÓN COLAPSABLE Y ORDENABLE) -->
         <div class="bg-white p-6 rounded-2xl shadow-lg">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
                  <!-- Botón para colapsar -->
@@ -464,7 +465,7 @@
                         <div>
                             <p class="font-bold text-sm sm:text-base">${data.cardName} <span class="text-xs font-normal">(${data.currency})</span></p>
                             <p class="text-xs opacity-80">${label}</p>
-                            ${data.type === 'credit' ? paymentDueInfo : actionButton}
+                            ${data.type === 'credit' ? paymentDueInfo : ''}
                             ${data.type === 'debit' ? actionButton : ''}
                         </div>
                         <div class="text-right">
