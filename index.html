@@ -467,7 +467,6 @@
 
                     if (data.type === 'debit') {
                         label = 'Saldo Actual Estimado';
-                        displayAmount = initial + data.total; // En débito sumamos el neto (que incluye negativos de ingresos y positivos de gastos, espera... la lógica de guardado era Gasto=Positivo, Ingreso=Negativo. Entonces Saldo = Inicial - Gasto + Ingreso = Inicial - (MontoNeto)) 
                         // Corrección Lógica Débito:
                         // Guardamos Gasto como Positivo (+100)
                         // Guardamos Ingreso como Negativo (-100)
