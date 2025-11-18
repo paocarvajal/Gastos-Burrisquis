@@ -25,6 +25,14 @@
             opacity: 0.6;
             filter: invert(0.8);
         }
+        .rotate-180 {
+            transform: rotate(180deg);
+        }
+        .transition-transform {
+            transition-property: transform;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 300ms;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -181,16 +189,32 @@
             </form>
         </div>
 
-        <!-- Listado de Gastos -->
-        <div>
-            <div class="flex justify-between items-end mb-4">
-                 <h2 class="text-xl font-bold text-gray-700">Movimientos Registrados</h2>
-                 <button id="delete-all-btn" class="text-xs text-red-400 underline">Borrar Todo</button>
+        <!-- Listado de Gastos (NUEVA VERSIÓN) -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+                 <!-- Botón para colapsar -->
+                 <button id="toggle-expenses-btn" class="flex items-center gap-2 text-xl font-bold text-gray-700 hover:text-pink-500 transition-colors w-full sm:w-auto">
+                    <span>Movimientos Registrados</span>
+                    <svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                 </button>
+                 
+                 <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                    <!-- Selector de Orden -->
+                    <select id="sort-expenses" class="text-sm border-gray-200 border rounded-lg px-2 py-2 bg-white text-gray-600 focus:ring-pink-400 focus:border-pink-400 shadow-sm">
+                        <option value="date">📅 Por Fecha</option>
+                        <option value="card">💳 Por Tarjeta</option>
+                    </select>
+                    <button id="delete-all-btn" class="text-xs text-red-400 underline hover:text-red-600 whitespace-nowrap">Borrar Todo</button>
+                 </div>
             </div>
            
-            <div id="expenses-list" class="space-y-4"></div>
-            <div id="empty-state" class="hidden text-center py-10">
-                <p class="text-gray-400 text-lg">No hay movimientos.<br>Sube un Excel o registra uno nuevo.</p>
+            <div id="expenses-container" class="transition-all duration-300 ease-in-out">
+                <div id="expenses-list" class="space-y-4"></div>
+                <div id="empty-state" class="hidden text-center py-10">
+                    <p class="text-gray-400 text-lg">No hay movimientos.<br>Sube un Excel o registra uno nuevo.</p>
+                </div>
             </div>
         </div>
 
@@ -215,15 +239,22 @@
             const amountInput = document.getElementById('amount');
             const currencySelect = document.getElementById('currency');
             const dateInput = document.getElementById('date');
+            
+            // Sección Movimientos
             const expensesList = document.getElementById('expenses-list');
+            const expensesContainer = document.getElementById('expenses-container');
             const emptyState = document.getElementById('empty-state');
+            const toggleExpensesBtn = document.getElementById('toggle-expenses-btn');
+            const toggleIcon = document.getElementById('toggle-icon');
+            const sortExpensesSelect = document.getElementById('sort-expenses');
+            const deleteAllBtn = document.getElementById('delete-all-btn');
+
             const summaryList = document.getElementById('summary-list');
             const generateReportBtn = document.getElementById('generate-report-btn');
             const reportFeedback = document.getElementById('report-feedback');
             const currentFilterBox = document.getElementById('current-filter');
             const currentFilterText = document.getElementById('current-filter-text');
             const clearFilterBtn = document.getElementById('clear-filter-btn');
-            const deleteAllBtn = document.getElementById('delete-all-btn');
             
             // Toggle manual
             const typeExpenseBtn = document.getElementById('type-expense');
@@ -249,19 +280,21 @@
             
             const cards = {
                 'banamex_roja': { name: 'Banamex Débito', type: 'debit', style: 'bg-red-50 border-red-400 text-red-700' },
-                'banamex_joy': { name: 'Banamex Joy', type: 'credit', cutDay: 15, payDay: 6, style: 'bg-pink-50 border-pink-400 text-pink-700' }, 
+                'banamex_joy': { name: 'Banamex Joy', type: 'credit', cutDay: 15, payDay: 4, style: 'bg-pink-50 border-pink-400 text-pink-700' }, 
                 'banorte_debito': { name: 'Banorte Débito', type: 'debit', style: 'bg-green-50 border-green-500 text-green-700' },
-                'banorte_credito': { name: 'Banorte Crédito', type: 'credit', cutDay: 8, payTermDays: 40, style: 'bg-green-50 border-green-500 text-green-700' }, 
+                'banorte_credito': { name: 'Banorte Crédito', type: 'credit', cutDay: 10, payTermDays: 20, style: 'bg-green-50 border-green-500 text-green-700' }, 
                 'bienestar': { name: 'Bienestar', type: 'debit', style: 'bg-gray-50 border-gray-400 text-gray-700' },
-                'invex': { name: 'Invex Aeropuerto', type: 'credit', cutDay: 26, payDay: 16, style: 'bg-yellow-50 border-yellow-500 text-yellow-700' }
+                'invex': { name: 'Invex Aeropuerto', type: 'credit', cutDay: 27, payDay: 18, style: 'bg-yellow-50 border-yellow-500 text-yellow-700' } 
             };
 
             const STORAGE_KEY = 'gastos_mama_v2'; 
             const BALANCE_KEY = 'saldos_iniciales_mama';
             
             let expenses = [];
-            let initialBalances = {}; // Guardará { 'banamex_roja': 5000, ... }
+            let initialBalances = {};
             let currentFilter = null;
+            let currentSort = 'date'; // 'date' or 'card'
+            let isExpensesExpanded = true;
 
             // Cargar datos
             try {
@@ -287,7 +320,32 @@
             const saveBalances = () => localStorage.setItem(BALANCE_KEY, JSON.stringify(initialBalances));
 
             const getSortedExpenses = () => {
-                return [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+                const list = [...expenses];
+                if (currentSort === 'date') {
+                    // Ordenar por fecha descendente (más reciente primero)
+                    return list.sort((a, b) => new Date(b.date) - new Date(a.date));
+                } else if (currentSort === 'card') {
+                    // Ordenar por nombre de tarjeta alfabéticamente
+                    return list.sort((a, b) => {
+                        // Obtener nombre A
+                        let nameA = a.paymentMethod;
+                        if (a.paymentMethod === 'Tarjeta' && a.cardInfo) nameA = a.cardInfo.name;
+                        
+                        // Obtener nombre B
+                        let nameB = b.paymentMethod;
+                        if (b.paymentMethod === 'Tarjeta' && b.cardInfo) nameB = b.cardInfo.name;
+                        
+                        // Comparar nombres
+                        const comparison = nameA.localeCompare(nameB);
+                        
+                        // Si son la misma tarjeta, ordenar por fecha secundaria
+                        if (comparison === 0) {
+                             return new Date(b.date) - new Date(a.date);
+                        }
+                        return comparison;
+                    });
+                }
+                return list;
             };
 
             const calculatePaymentDate = (expense) => {
@@ -333,20 +391,16 @@
 
             const renderSummary = () => {
                 const summary = {};
-                
-                // Inicializar TODAS las tarjetas
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
                 Object.keys(cards).forEach(key => {
-                    summary[`${key}_MXN`] = { 
-                        total: 0, 
-                        cardName: cards[key].name, 
-                        currency: 'MXN', 
-                        style: cards[key].style, 
-                        type: cards[key].type, 
-                        cardId: key 
-                    };
+                    summary[`${key}_MXN`] = { total: 0, cardName: cards[key].name, currency: 'MXN', style: cards[key].style, type: cards[key].type, cardId: key };
                 });
 
-                // Calcular totales
                 expenses.forEach(expense => {
                     if (expense.paymentMethod === 'Tarjeta' && expense.cardInfo && expense.cardInfo.name) {
                         const cardId = Object.keys(cards).find(id => cards[id].name === expense.cardInfo.name);
@@ -357,15 +411,8 @@
                             }
                             
                             if (cards[cardId].type === 'debit') {
-                                // DÉBITO: Total Acumulado Histórico (Ingresos restan porque son negativos en form, pero aquí queremos sumar todo matemáticamente)
-                                // Espera, en la lógica de guardado: Ingreso = -100, Gasto = 100.
-                                // Para saldo: Saldo = Inicial - Gasto + Ingreso.
-                                // Si Gasto es +100 y Saldo = Inicial - 100. 
-                                // Si Ingreso es -100, Saldo = Inicial - (-100) = Inicial + 100.
-                                // Entonces: Saldo = Inicial - Suma(TransactionAmounts).
                                 summary[key].total += expense.amount;
                             } else {
-                                // CRÉDITO: Pago estimado
                                 if (expense.amount < 0) {
                                     summary[key].total += expense.amount; 
                                 } else {
@@ -392,19 +439,22 @@
                     const data = summary[key];
                     const initial = initialBalances[data.cardId] || 0;
                     
-                    let label, displayAmount, actionButton;
+                    let label, displayAmount, actionButton, paymentDueInfo = '';
 
                     if (data.type === 'debit') {
                         label = 'Saldo Actual Estimado';
-                        // FÓRMULA DE SALDO: Inicial - (Gastos + IngresosNegativos) 
-                        // Como Ingresos son negativos, restarlos es sumar. Gastos son positivos, restarlos es restar.
-                        // Así que: Saldo = Inicial - TotalCalculado
-                        displayAmount = initial - data.total;
+                        displayAmount = initial + data.total;
                         
                         actionButton = `<button class="text-xs text-blue-600 font-bold mt-1 bg-white px-2 py-1 rounded border shadow-sm hover:bg-blue-50" data-set-balance="${data.cardId}">🎯 Ajustar Saldo Inicial</button>`;
                     } else {
-                        label = 'Pago Estimado (Mes)';
-                        displayAmount = data.total; // Para crédito mostramos la deuda acumulada del mes
+                        label = 'Pago Estimado (Deuda Acumulada)';
+                        displayAmount = data.total;
+                        
+                        const tempExpense = { date: new Date().toISOString().slice(0,10), cardInfo: cards[data.cardId], amount: 100, installments: 0 };
+                        const nextPaymentDate = calculatePaymentDate(tempExpense);
+                        
+                        paymentDueInfo = `<p class="text-xs text-gray-500 mt-1">Pago Límite: <b>${nextPaymentDate}</b></p>`;
+
                         actionButton = data.total > 0 ? `<button class="text-xs underline cursor-pointer hover:text-pink-600" data-filter-id="${data.cardId}" data-filter-curr="${data.currency}">Ver detalles</button>` : '';
                     }
                     
@@ -414,17 +464,18 @@
                         <div>
                             <p class="font-bold text-sm sm:text-base">${data.cardName} <span class="text-xs font-normal">(${data.currency})</span></p>
                             <p class="text-xs opacity-80">${label}</p>
-                            ${actionButton}
+                            ${data.type === 'credit' ? paymentDueInfo : actionButton}
+                            ${data.type === 'debit' ? actionButton : ''}
                         </div>
                         <div class="text-right">
                             <p class="font-bold text-lg">${formatCurrency(displayAmount, data.currency)}</p>
+                            ${data.type === 'credit' ? actionButton : ''}
                         </div>
                     `;
                     summaryList.appendChild(div);
                 });
             };
 
-            // Renderizado de lista de gastos (igual que antes)
             const renderExpenses = () => {
                 expensesList.innerHTML = '';
                 const sorted = getSortedExpenses();
@@ -435,6 +486,7 @@
 
                 if (filtered.length === 0) {
                     emptyState.classList.remove('hidden');
+                    expensesContainer.classList.remove('hidden'); // Force show if empty but filter active
                     return;
                 }
                 emptyState.classList.add('hidden');
@@ -452,8 +504,7 @@
                     }
 
                     const amountColor = isIncome ? 'text-green-600' : 'text-pink-600';
-                    const amountSign = isIncome ? '+' : ''; 
-
+                    
                     el.innerHTML = `
                         <div>
                             <div class="flex items-baseline gap-2">
@@ -461,7 +512,7 @@
                                 <span class="text-xs text-gray-400">${new Date(expense.date).toLocaleDateString('es-MX', {day: 'numeric', month: 'short'})}</span>
                             </div>
                             ${expense.location ? `<p class="text-xs text-gray-500 italic">📍 ${expense.location}</p>` : ''}
-                            <p class="text-xs text-gray-500 mt-1">${subtext}</p>
+                            <p class="text-xs text-gray-500 mt-1 font-medium">${subtext}</p>
                         </div>
                         <div class="text-right">
                             <p class="font-bold ${amountColor} text-lg">${isIncome ? '+' : '-'} ${formatCurrency(Math.abs(expense.amount), expense.currency)}</p>
@@ -488,6 +539,24 @@
 
             // --- EVENTOS ---
             
+            // Colapsar/Expandir
+            toggleExpensesBtn.addEventListener('click', () => {
+                isExpensesExpanded = !isExpensesExpanded;
+                if (isExpensesExpanded) {
+                    expensesContainer.classList.remove('hidden', 'opacity-0', 'h-0');
+                    toggleIcon.classList.remove('rotate-180');
+                } else {
+                    expensesContainer.classList.add('hidden', 'opacity-0', 'h-0');
+                    toggleIcon.classList.add('rotate-180');
+                }
+            });
+
+            // Ordenar
+            sortExpensesSelect.addEventListener('change', (e) => {
+                currentSort = e.target.value;
+                refreshUI();
+            });
+
             // Listener para el botón de Saldo Inicial
             summaryList.addEventListener('click', (e) => {
                 if (e.target.dataset.setBalance) {
@@ -513,9 +582,7 @@
                 }
             });
 
-            // ... (Resto de eventos: Toggle Manual, Imports, etc. se mantienen igual)
-            
-            // Toggle Ingreso/Gasto
+            // ... (Resto de eventos: Toggle Manual, Imports, etc.)
             const setTransactionType = (type) => {
                 transactionTypeInput.value = type;
                 if (type === 'expense') {
@@ -669,7 +736,7 @@
                 }
             });
 
-            // Importaciones y reportes (código previo reutilizado sin cambios de lógica)
+            // Importaciones y reportes
             downloadTemplateBtn.addEventListener('click', () => {
                 const data = [
                     {"Fecha": "2025-11-18", "Concepto": "Ej: Superama", "Monto": 1500.50, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0},
@@ -783,6 +850,7 @@
             });
 
             dateInput.value = new Date().toISOString().slice(0,10);
+            setTransactionType('expense');
             refreshUI();
         });
     </script>
