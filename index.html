@@ -42,7 +42,7 @@
                 📂 Cargar Estados de Cuenta
             </h2>
             <p class="text-sm text-blue-600 mb-4">
-                Sube aquí tus archivos para llenar la lista automáticamente.
+                Sube aquí tus archivos. Para registrar abonos en Excel, usa la columna "Tipo" o pon el monto en negativo.
             </p>
             
             <div class="space-y-3">
@@ -90,13 +90,13 @@
 
         <!-- Sección de Agregar Gasto Manual -->
         <div class="bg-white p-6 rounded-2xl shadow-lg">
-            <h2 class="text-xl font-bold mb-4 text-gray-700">Agregar Gasto Manual</h2>
+            <h2 class="text-xl font-bold mb-4 text-gray-700">Agregar Movimiento Manual</h2>
             <form id="expense-form" class="space-y-4">
                 <input type="hidden" id="editing-expense-id">
 
                 <div>
-                    <label for="description" class="block text-sm font-medium text-gray-600 mb-1">¿Qué compraste?</label>
-                    <input type="text" id="description" placeholder="Ej: Café Starbucks" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
+                    <label for="description" class="block text-sm font-medium text-gray-600 mb-1">Descripción</label>
+                    <input type="text" id="description" placeholder="Ej: Café Starbucks o Depósito Nómina" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
                 </div>
 
                 <div>
@@ -104,9 +104,19 @@
                     <input type="text" id="location" placeholder="Ej: Aeropuerto, Centro Comercial" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400">
                 </div>
 
+                <!-- Tipo de Movimiento (Nuevo toggle para manual) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">Tipo de Movimiento</label>
+                    <div class="flex gap-2">
+                        <button type="button" id="type-expense" class="flex-1 py-2 px-4 rounded-lg border-2 border-pink-500 bg-pink-500 text-white font-medium transition-all">Gasto (Cargo)</button>
+                        <button type="button" id="type-income" class="flex-1 py-2 px-4 rounded-lg border-2 border-gray-200 text-gray-600 font-medium transition-all">Ingreso (Abono)</button>
+                    </div>
+                    <input type="hidden" id="transaction-type" value="expense">
+                </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="amount" class="block text-sm font-medium text-gray-600 mb-1">Monto Total</label>
+                        <label for="amount" class="block text-sm font-medium text-gray-600 mb-1">Monto</label>
                         <input type="number" id="amount" placeholder="0.00" step="0.01" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
                     </div>
                     <div>
@@ -119,7 +129,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-2">Método de pago</label>
+                    <label class="block text-sm font-medium text-gray-600 mb-2">Método</label>
                     <div class="grid grid-cols-3 gap-2">
                         <button type="button" data-payment="Efectivo" class="payment-method-btn flex items-center justify-center gap-2 p-3 text-base border-2 border-gray-200 rounded-xl transition-all">
                             💵 Efectivo
@@ -161,12 +171,12 @@
                 </div>
 
                 <div>
-                    <label for="date" class="block text-sm font-medium text-gray-600 mb-1">Fecha de la compra</label>
+                    <label for="date" class="block text-sm font-medium text-gray-600 mb-1">Fecha</label>
                     <input type="date" id="date" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
                 </div>
 
                 <button type="submit" class="w-full bg-pink-500 text-white font-bold text-lg py-4 rounded-xl hover:bg-pink-600 transition-colors shadow-md">
-                    Guardar Gasto
+                    Guardar Movimiento
                 </button>
             </form>
         </div>
@@ -215,6 +225,11 @@
             const clearFilterBtn = document.getElementById('clear-filter-btn');
             const deleteAllBtn = document.getElementById('delete-all-btn');
             
+            // Toggle manual
+            const typeExpenseBtn = document.getElementById('type-expense');
+            const typeIncomeBtn = document.getElementById('type-income');
+            const transactionTypeInput = document.getElementById('transaction-type');
+
             // Importación
             const downloadTemplateBtn = document.getElementById('download-template-btn');
             const importExcelInput = document.getElementById('import-excel-input');
@@ -232,7 +247,6 @@
 
             // --- CONFIGURACIÓN ---
             
-            // Definición de tarjetas (Estilos y tipo)
             const cards = {
                 'banamex_roja': { name: 'Banamex Débito', type: 'debit', style: 'bg-red-50 border-red-400 text-red-700' },
                 'banamex_joy': { name: 'Banamex Joy', type: 'credit', cutDay: 15, payDay: 6, style: 'bg-pink-50 border-pink-400 text-pink-700' }, 
@@ -242,9 +256,6 @@
                 'invex': { name: 'Invex Aeropuerto', type: 'credit', cutDay: 26, payDay: 16, style: 'bg-yellow-50 border-yellow-500 text-yellow-700' }
             };
 
-            // --- ESTADO Y CARGA ---
-            
-            // CAMBIO CLAVE: Usamos una clave nueva 'gastos_v2' para forzar el inicio limpio y olvidar los datos viejos
             const STORAGE_KEY = 'gastos_mama_v2'; 
             
             let expenses = [];
@@ -262,7 +273,10 @@
             // --- FUNCIONES AUXILIARES ---
 
             const formatCurrency = (amount, currency) => {
-                return new Intl.NumberFormat('es-MX', { style: 'currency', currency: currency }).format(amount);
+                // Manejo de signos:
+                const sign = amount < 0 ? '+ ' : '';
+                const absAmount = Math.abs(amount);
+                return sign + new Intl.NumberFormat('es-MX', { style: 'currency', currency: currency }).format(absAmount);
             };
 
             const saveExpenses = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
@@ -271,9 +285,10 @@
                 return [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
             };
 
-            // Cálculo de fecha de pago para tarjetas de crédito
             const calculatePaymentDate = (expense) => {
                 if (!expense.cardInfo || expense.cardInfo.type !== 'credit') return 'N/A';
+                // No calculamos fecha de pago para abonos (montos negativos) en TC
+                if (expense.amount < 0) return 'Abono';
 
                 const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
                 const [year, month, day] = expense.date.split('-').map(Number);
@@ -283,7 +298,6 @@
                 let cutOffYear = purchaseDate.getFullYear();
                 let cutOffMonth = purchaseDate.getMonth();
 
-                // Si la compra fue después del día de corte, entra al siguiente mes
                 if (purchaseDate.getDate() > cutDay) {
                     cutOffMonth += 1;
                     if (cutOffMonth > 11) {
@@ -296,7 +310,6 @@
                 let paymentDate;
 
                 if (payDay) {
-                    // Si hay día fijo de pago (ej. Banamex Joy paga los 6)
                     let paymentMonth = cutOffMonth + 1;
                     let paymentYear = cutOffYear;
                     if (paymentMonth > 11) {
@@ -305,7 +318,6 @@
                     }
                     paymentDate = new Date(paymentYear, paymentMonth, payDay);
                 } else if (payTermDays) {
-                    // Si es a días naturales después del corte (ej. Banorte 40 días)
                     paymentDate = new Date(cutOffDate);
                     paymentDate.setDate(cutOffDate.getDate() + payTermDays);
                 }
@@ -319,13 +331,12 @@
             const renderSummary = () => {
                 const summary = {};
                 const now = new Date();
-                // Normalizar fecha de hoy al inicio del día para comparaciones
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
                 const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-                // Inicializar TODAS las tarjetas en 0 para que siempre aparezcan
+                // Inicializar TODAS las tarjetas
                 Object.keys(cards).forEach(key => {
                     summary[`${key}_MXN`] = { total: 0, cardName: cards[key].name, currency: 'MXN', style: cards[key].style, type: cards[key].type, cardId: key };
                 });
@@ -336,28 +347,33 @@
                         if (cardId) {
                             const key = `${cardId}_${expense.currency}`;
                             if (!summary[key]) {
-                                // Si aparece una moneda nueva (ej USD), la creamos
                                 summary[key] = { total: 0, cardName: cards[cardId].name, currency: expense.currency, style: cards[cardId].style, type: cards[cardId].type, cardId: cardId };
                             }
                             
-                            // --- LÓGICA DIFERENCIADA POR TIPO DE TARJETA ---
                             const expDateParts = expense.date.split('-');
                             const expDate = new Date(expDateParts[0], expDateParts[1] - 1, expDateParts[2]);
 
                             if (cards[cardId].type === 'debit') {
-                                // DÉBITO: Acumular solo mes actual y hasta el día de hoy (CORRECCIÓN SOLICITADA)
+                                // DÉBITO: Sumar todo (positivo es gasto, negativo es abono) del mes
                                 if (expDate.getFullYear() === currentYear && 
                                     expDate.getMonth() === currentMonth && 
                                     expDate <= today) {
                                     summary[key].total += expense.amount;
                                 }
                             } else {
-                                // CRÉDITO: Lógica existente (MSI o pago completo)
-                                let amountToAdd = expense.amount;
-                                if (expense.installments > 0) {
-                                    amountToAdd = expense.amount / expense.installments;
+                                // CRÉDITO
+                                if (expense.amount < 0) {
+                                    // Es un pago a la tarjeta, lo restamos de la deuda (o sumamos si deuda es positiva)
+                                    // Aquí depende cómo queramos ver el "Pago Estimado". 
+                                    // Normalmente: Deuda = Gastos - Pagos.
+                                    summary[key].total += expense.amount; 
+                                } else {
+                                    let amountToAdd = expense.amount;
+                                    if (expense.installments > 0) {
+                                        amountToAdd = expense.amount / expense.installments;
+                                    }
+                                    summary[key].total += amountToAdd;
                                 }
-                                summary[key].total += amountToAdd;
                             }
                         }
                     }
@@ -365,7 +381,6 @@
 
                 summaryList.innerHTML = '';
                 
-                // Orden: Crédito primero, luego Débito
                 const orderedKeys = Object.keys(summary).sort((a, b) => {
                     if (summary[a].type === 'credit' && summary[b].type !== 'credit') return -1;
                     if (summary[a].type !== 'credit' && summary[b].type === 'credit') return 1;
@@ -374,9 +389,12 @@
 
                 orderedKeys.forEach(key => {
                     const data = summary[key];
-                    // MOSTRAR SIEMPRE, aunque sea 0
                     const currentMonthName = monthNames[currentMonth];
-                    const label = data.type === 'credit' ? 'Pago Estimado (Mes)' : `Gasto Acumulado (${currentMonthName})`;
+                    // En débito, "Movimiento Neto" es lo gastado menos lo ingresado.
+                    // Si expenses son positivos (gastos) y negativos (ingresos):
+                    // Total > 0 significa Gastaste más de lo que ingresaste ese mes.
+                    // Total < 0 significa Ingresaste más de lo que gastaste (Ahorro).
+                    let label = data.type === 'credit' ? 'Pago Estimado (Mes)' : `Movimiento Neto (${currentMonthName})`;
                     
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-center p-3 rounded-lg border ${data.style} bg-opacity-20`;
@@ -398,7 +416,6 @@
                 expensesList.innerHTML = '';
                 const sorted = getSortedExpenses();
 
-                // Filtrado
                 const filtered = currentFilter 
                     ? sorted.filter(e => e.cardInfo && Object.keys(cards).find(key => cards[key].name === e.cardInfo.name) === currentFilter.id && e.currency === currentFilter.currency)
                     : sorted;
@@ -413,11 +430,19 @@
                     const el = document.createElement('div');
                     el.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-start';
                     
+                    const isIncome = expense.amount < 0;
+                    
                     let subtext = expense.paymentMethod;
                     if (expense.paymentMethod === 'Tarjeta') {
                         const msiInfo = expense.installments > 0 ? ` • ${expense.installments} MSI` : '';
                         subtext = `${expense.cardInfo ? expense.cardInfo.name : 'Tarjeta'} ${msiInfo}`;
                     }
+
+                    // Estilos dinámicos para Ingreso vs Gasto
+                    const amountColor = isIncome ? 'text-green-600' : 'text-pink-600';
+                    const amountSign = isIncome ? '+' : ''; 
+                    // Nota: en JS guardamos Ingreso como negativo para la suma, 
+                    // pero visualmente queremos ver "+" y verde.
 
                     el.innerHTML = `
                         <div>
@@ -429,7 +454,7 @@
                             <p class="text-xs text-gray-500 mt-1">${subtext}</p>
                         </div>
                         <div class="text-right">
-                            <p class="font-bold text-pink-600 text-lg">${formatCurrency(expense.amount, expense.currency)}</p>
+                            <p class="font-bold ${amountColor} text-lg">${formatCurrency(expense.amount, expense.currency)}</p>
                             <div class="flex justify-end gap-3 mt-2">
                                 <button data-id="${expense.id}" class="edit-btn text-blue-400 text-xs underline">Editar</button>
                                 <button data-id="${expense.id}" class="delete-btn text-red-400 text-xs underline">Borrar</button>
@@ -452,9 +477,31 @@
                 }
             };
 
-            // --- EVENTOS DE FORMULARIO ---
+            // --- EVENTOS MANUALES ---
+            
+            // Toggle Ingreso/Gasto
+            const setTransactionType = (type) => {
+                transactionTypeInput.value = type;
+                if (type === 'expense') {
+                    typeExpenseBtn.classList.add('bg-pink-500', 'text-white', 'border-pink-500');
+                    typeExpenseBtn.classList.remove('bg-white', 'text-gray-600', 'border-gray-200');
+                    typeIncomeBtn.classList.remove('bg-green-500', 'text-white', 'border-green-500');
+                    typeIncomeBtn.classList.add('bg-white', 'text-gray-600', 'border-gray-200');
+                    expenseForm.querySelector('button[type="submit"]').classList.add('bg-pink-500', 'hover:bg-pink-600');
+                    expenseForm.querySelector('button[type="submit"]').classList.remove('bg-green-500', 'hover:bg-green-600');
+                } else {
+                    typeIncomeBtn.classList.add('bg-green-500', 'text-white', 'border-green-500');
+                    typeIncomeBtn.classList.remove('bg-white', 'text-gray-600', 'border-gray-200');
+                    typeExpenseBtn.classList.remove('bg-pink-500', 'text-white', 'border-pink-500');
+                    typeExpenseBtn.classList.add('bg-white', 'text-gray-600', 'border-gray-200');
+                    expenseForm.querySelector('button[type="submit"]').classList.remove('bg-pink-500', 'hover:bg-pink-600');
+                    expenseForm.querySelector('button[type="submit"]').classList.add('bg-green-500', 'hover:bg-green-600');
+                }
+            };
 
-            // Toggle de tipo de pago
+            typeExpenseBtn.addEventListener('click', () => setTransactionType('expense'));
+            typeIncomeBtn.addEventListener('click', () => setTransactionType('income'));
+
             paymentMethodBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     paymentMethodBtns.forEach(b => b.classList.remove('bg-pink-500', 'text-white', 'border-pink-500'));
@@ -470,7 +517,6 @@
                         cardOptions.classList.add('hidden');
                         installmentsSection.classList.add('hidden');
                         selectedCardInfoInput.required = false;
-                        // Limpiar selección de tarjeta visualmente
                         cardBtns.forEach(b => {
                             const style = cards[b.dataset.cardId].style.split(' ');
                             b.classList.remove(...style);
@@ -480,23 +526,19 @@
                 });
             });
 
-            // Selección de tarjeta
             cardBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const id = btn.dataset.cardId;
                     const info = cards[id];
 
-                    // Limpiar estilos de otros botones
                     cardBtns.forEach(b => {
                         const style = cards[b.dataset.cardId].style.split(' ');
                         b.classList.remove(...style);
                     });
 
-                    // Aplicar estilo al seleccionado
                     btn.classList.add(...info.style.split(' '));
                     selectedCardInfoInput.value = JSON.stringify(info);
 
-                    // Mostrar MSI si es crédito
                     if (info.type === 'credit') {
                         installmentsSection.classList.remove('hidden');
                     } else {
@@ -506,18 +548,26 @@
                 });
             });
 
-            // Guardar Gasto
             expenseForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 if (!paymentMethodInput.value) { alert('Selecciona un método de pago'); return; }
                 if (paymentMethodInput.value === 'Tarjeta' && !selectedCardInfoInput.value) { alert('Selecciona qué tarjeta usaste'); return; }
 
                 const editingId = parseFloat(editingExpenseIdInput.value);
+                
+                let finalAmount = parseFloat(amountInput.value);
+                // Si es ingreso, guardamos en negativo
+                if (transactionTypeInput.value === 'income') {
+                    finalAmount = -Math.abs(finalAmount);
+                } else {
+                    finalAmount = Math.abs(finalAmount);
+                }
+
                 const newExpense = {
                     id: editingId || Date.now(),
                     description: descriptionInput.value,
                     location: locationInput.value,
-                    amount: parseFloat(amountInput.value),
+                    amount: finalAmount,
                     currency: currencySelect.value,
                     paymentMethod: paymentMethodInput.value,
                     cardInfo: selectedCardInfoInput.value ? JSON.parse(selectedCardInfoInput.value) : null,
@@ -535,22 +585,21 @@
                 saveExpenses();
                 refreshUI();
                 
-                // Reset form
                 expenseForm.reset();
                 editingExpenseIdInput.value = '';
+                setTransactionType('expense'); // Reset a gasto
                 paymentMethodBtns.forEach(b => b.classList.remove('bg-pink-500', 'text-white', 'border-pink-500'));
                 cardOptions.classList.add('hidden');
                 dateInput.value = new Date().toISOString().slice(0,10);
                 window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
             });
 
-            // Acciones en lista (Editar/Borrar)
             expensesList.addEventListener('click', (e) => {
                 const id = parseFloat(e.target.dataset.id);
                 if (!id) return;
 
                 if (e.target.classList.contains('delete-btn')) {
-                    if(confirm('¿Eliminar este gasto?')) {
+                    if(confirm('¿Eliminar este movimiento?')) {
                         expenses = expenses.filter(ex => ex.id !== id);
                         saveExpenses();
                         refreshUI();
@@ -563,16 +612,18 @@
                         editingExpenseIdInput.value = exp.id;
                         descriptionInput.value = exp.description;
                         locationInput.value = exp.location || '';
-                        amountInput.value = exp.amount;
+                        amountInput.value = Math.abs(exp.amount); // Mostrar siempre positivo en el input
                         currencySelect.value = exp.currency;
                         dateInput.value = exp.date;
                         
-                        // Trigger clicks para UI
+                        // Setear tipo
+                        if (exp.amount < 0) setTransactionType('income');
+                        else setTransactionType('expense');
+
                         paymentMethodBtns.forEach(btn => {
                             if (btn.dataset.payment === exp.paymentMethod) btn.click();
                         });
                         if (exp.paymentMethod === 'Tarjeta' && exp.cardInfo) {
-                            // Encontrar el key por nombre
                             const key = Object.keys(cards).find(k => cards[k].name === exp.cardInfo.name);
                             if (key) {
                                 document.querySelector(`button[data-card-id="${key}"]`).click();
@@ -584,7 +635,6 @@
                 }
             });
 
-            // Filtros
             summaryList.addEventListener('click', (e) => {
                 if (e.target.dataset.filterId) {
                     currentFilter = { id: e.target.dataset.filterId, currency: e.target.dataset.filterCurr };
@@ -596,7 +646,6 @@
                 refreshUI();
             });
 
-            // Borrar todo
             deleteAllBtn.addEventListener('click', () => {
                 if(confirm('¿ESTÁS SEGURA? Esto borrará todos los registros.')) {
                     expenses = [];
@@ -608,13 +657,14 @@
             // --- IMPORTACIÓN EXCEL ---
             downloadTemplateBtn.addEventListener('click', () => {
                 const data = [
-                    {"Fecha": "2025-11-18", "Concepto": "Ej: Superama", "Monto": 1500.50, "Moneda": "MXN", "Tarjeta": "Banamex Débito", "MSI": 0},
-                    {"Fecha": "2025-11-19", "Concepto": "Ej: Liverpool", "Monto": 5000, "Moneda": "MXN", "Tarjeta": "Banamex Joy", "MSI": 12}
+                    {"Fecha": "2025-11-18", "Concepto": "Ej: Superama", "Monto": 1500.50, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0},
+                    {"Fecha": "2025-11-15", "Concepto": "Nómina", "Monto": 8000.00, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Abono", "Tarjeta": "Banamex Débito", "MSI": 0},
+                    {"Fecha": "2025-11-19", "Concepto": "Ej: Liverpool", "Monto": 5000, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Cargo", "Tarjeta": "Banamex Joy", "MSI": 12}
                 ];
                 const ws = XLSX.utils.json_to_sheet(data);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
-                XLSX.writeFile(wb, "Plantilla_Gastos.xlsx");
+                XLSX.writeFile(wb, "Plantilla_Movimientos.xlsx");
             });
 
             importExcelInput.addEventListener('change', (e) => {
@@ -629,14 +679,23 @@
                     
                     let count = 0;
                     json.forEach(row => {
-                        // Mapeo inteligente
                         const desc = row['Concepto'] || row['Descripción'] || row['Description'];
-                        const monto = row['Monto'] || row['Amount'] || row['Importe'];
+                        let monto = parseFloat(row['Monto'] || row['Amount'] || row['Importe']);
                         const fechaRaw = row['Fecha'] || row['Date'];
                         const cardName = row['Tarjeta'] || row['Card'];
-                        
-                        if (desc && monto) {
-                            // Intentar matchear tarjeta
+                        const tipo = row['Tipo (Cargo/Abono)'] || row['Tipo'] || '';
+
+                        if (desc && !isNaN(monto)) {
+                            // Lógica de Abono
+                            const esAbono = tipo.toLowerCase().includes('abono') || tipo.toLowerCase().includes('depósito') || tipo.toLowerCase().includes('ingreso');
+                            
+                            // Si dice Abono, convertimos a negativo
+                            if (esAbono) {
+                                monto = -Math.abs(monto);
+                            } 
+                            // Si ya venía en negativo en el Excel, lo respetamos (es abono)
+                            // Si venía positivo y no dice abono, es gasto (positivo)
+
                             let cardInfo = null;
                             let method = 'Efectivo';
                             if (cardName) {
@@ -648,102 +707,81 @@
                             expenses.push({
                                 id: Date.now() + Math.random(),
                                 description: desc,
-                                amount: parseFloat(monto),
+                                amount: monto,
                                 currency: row['Moneda'] || 'MXN',
                                 paymentMethod: method,
                                 cardInfo: cardInfo,
                                 installments: row['MSI'] || 0,
-                                date: fechaRaw // Idealmente parsear fecha si viene en formato raro
+                                date: fechaRaw
                             });
                             count++;
                         }
                     });
                     saveExpenses();
                     refreshUI();
-                    importFeedback.textContent = `Se importaron ${count} gastos desde Excel.`;
+                    importFeedback.textContent = `Se importaron ${count} movimientos.`;
                     importFeedback.classList.remove('hidden', 'text-red-500');
                     importFeedback.classList.add('text-green-600');
                 };
                 reader.readAsArrayBuffer(file);
             });
 
-            // --- IMPORTACIÓN PDF (BÁSICA) ---
-            importPdfInput.addEventListener('change', async (e) => {
+            // ... PDF logic same as before ...
+             importPdfInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
                 if(!file) return;
-                
-                importFeedback.textContent = "Leyendo PDF... (Esto puede tardar)";
+                importFeedback.textContent = "Leyendo PDF... (Puede tardar)";
                 importFeedback.classList.remove('hidden');
-                
                 try {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
                     let fullText = "";
-                    
                     for(let i=1; i<=pdf.numPages; i++){
                         const page = await pdf.getPage(i);
                         const content = await page.getTextContent();
                         const strings = content.items.map(item => item.str);
                         fullText += strings.join(" ") + "\n";
                     }
-
-                    importFeedback.innerHTML = `
-                        <b>PDF Leído.</b><br>
-                        Nota: Los PDFs bancarios son complejos de leer automáticamente sin errores.<br>
-                        Por seguridad, te recomendamos copiar los movimientos del PDF a la <b>Plantilla de Excel</b> y subirla.<br>
-                        <span class="text-xs text-gray-500">Texto extraído (primeros caracteres): ${fullText.substring(0, 50)}...</span>
-                    `;
+                    importFeedback.innerHTML = `<b>PDF Leído.</b><br>Recomendación: Copia los datos a la plantilla Excel para mayor precisión.<br><span class="text-xs text-gray-500">Inicio texto: ${fullText.substring(0, 50)}...</span>`;
                     importFeedback.classList.add('text-blue-600');
-
                 } catch (err) {
-                    console.error(err);
-                    importFeedback.textContent = "Error al leer el PDF. Intenta con Excel.";
+                    importFeedback.textContent = "Error leyendo PDF. Usa Excel.";
                     importFeedback.classList.add('text-red-500');
                 }
             });
 
+
             // --- REPORTE ---
             generateReportBtn.addEventListener('click', () => {
-                if (expenses.length === 0) { alert('No hay datos para reportar'); return; }
-                
+                if (expenses.length === 0) { alert('No hay datos'); return; }
                 const data = expenses.map(e => ({
                     Fecha: e.date,
                     Concepto: e.description,
                     Lugar: e.location,
-                    Monto: e.amount,
+                    Monto: Math.abs(e.amount),
+                    Tipo: e.amount < 0 ? 'Abono' : 'Cargo',
                     Moneda: e.currency,
                     Metodo: e.paymentMethod,
                     Tarjeta: e.cardInfo ? e.cardInfo.name : '',
                     MSI: e.installments > 0 ? e.installments : '',
                     Pago_Estimado: calculatePaymentDate(e)
                 }));
-
                 const ws = XLSX.utils.json_to_sheet(data);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "Reporte");
-                
-                // Intentar compartir nativo (móvil)
                 try {
                     const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
                     const blob = new Blob([wbout], {type:"application/octet-stream"});
                     const file = new File([blob], "Reporte_Gastos_Mama.xlsx", {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-                    
                     if (navigator.canShare && navigator.canShare({files: [file]})) {
-                        navigator.share({
-                            files: [file],
-                            title: 'Reporte de Gastos',
-                            text: 'Aquí está el reporte actualizado.'
-                        });
+                        navigator.share({ files: [file], title: 'Reporte', text: 'Adjunto reporte.' });
                     } else {
                         XLSX.writeFile(wb, "Reporte_Gastos_Mama.xlsx");
-                        alert("Reporte descargado en tu dispositivo.");
+                        alert("Descargado.");
                     }
-                } catch(e) {
-                    XLSX.writeFile(wb, "Reporte_Gastos_Mama.xlsx");
-                }
+                } catch(e) { XLSX.writeFile(wb, "Reporte_Gastos_Mama.xlsx"); }
             });
 
-            // Init
             dateInput.value = new Date().toISOString().slice(0,10);
             refreshUI();
         });
