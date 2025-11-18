@@ -34,9 +34,39 @@
             transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
             transition-duration: 300ms;
         }
+        /* Modal Overlay */
+        #payment-modal {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-50 text-gray-800 relative">
+
+    <!-- Modal de Registro de Pago (Oculto por defecto) -->
+    <div id="payment-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                💸 Registrar Pago a Tarjeta
+            </h3>
+            <p class="text-sm text-gray-500 mb-4">Estás registrando un pago para: <b id="modal-card-name" class="text-gray-800"></b></p>
+            
+            <form id="payment-form" class="space-y-4">
+                <input type="hidden" id="modal-card-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Monto del Pago</label>
+                    <input type="number" id="payment-amount" placeholder="0.00" step="0.01" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-green-500 focus:border-green-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Fecha del Pago</label>
+                    <input type="date" id="payment-date" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-green-500 focus:border-green-500" required>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" id="close-modal-btn" class="flex-1 py-3 text-gray-600 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
+                    <button type="submit" class="flex-1 py-3 text-white bg-green-600 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md">Guardar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="container mx-auto max-w-2xl p-4 sm:p-6 space-y-8">
 
@@ -257,6 +287,15 @@
             const currentFilterText = document.getElementById('current-filter-text');
             const clearFilterBtn = document.getElementById('clear-filter-btn');
             
+            // Modal de Pago
+            const paymentModal = document.getElementById('payment-modal');
+            const paymentForm = document.getElementById('payment-form');
+            const modalCardName = document.getElementById('modal-card-name');
+            const modalCardIdInput = document.getElementById('modal-card-id');
+            const paymentAmountInput = document.getElementById('payment-amount');
+            const paymentDateInput = document.getElementById('payment-date');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+
             // Toggle manual
             const typeExpenseBtn = document.getElementById('type-expense');
             const typeIncomeBtn = document.getElementById('type-income');
@@ -294,17 +333,14 @@
             let expenses = [];
             let initialBalances = {};
             let currentFilter = null;
-            let currentSort = 'date'; // 'date' or 'card'
+            let currentSort = 'date'; 
             let isExpensesExpanded = true;
 
-            // Cargar datos
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
                 if (saved) expenses = JSON.parse(saved);
-                
                 const savedBalances = localStorage.getItem(BALANCE_KEY);
                 if (savedBalances) initialBalances = JSON.parse(savedBalances);
-
             } catch (e) {
                 console.log("Iniciando en blanco.");
             }
@@ -312,21 +348,17 @@
             // --- FUNCIONES AUXILIARES ---
 
             const formatCurrency = (amount, currency) => {
-                const sign = amount < 0 ? '' : ''; 
                 return new Intl.NumberFormat('es-MX', { style: 'currency', currency: currency }).format(amount);
             };
 
             const saveExpenses = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-            
             const saveBalances = () => localStorage.setItem(BALANCE_KEY, JSON.stringify(initialBalances));
 
             const getSortedExpenses = () => {
                 const list = [...expenses];
                 if (currentSort === 'date') {
-                    // Ordenar por fecha descendente (más reciente primero)
                     return list.sort((a, b) => new Date(b.date) - new Date(a.date));
                 } else if (currentSort === 'card') {
-                    // Ordenar por nombre de tarjeta alfabéticamente
                     return list.sort((a, b) => {
                         let nameA = a.paymentMethod;
                         if (a.paymentMethod === 'Tarjeta' && a.cardInfo) nameA = a.cardInfo.name;
@@ -431,13 +463,23 @@
                     const data = summary[key];
                     const initial = initialBalances[data.cardId] || 0;
                     
-                    let label, displayAmount, actionButton, paymentDueInfo = '';
+                    let label, displayAmount, actionButton = '', paymentDueInfo = '';
 
                     if (data.type === 'debit') {
                         label = 'Saldo Actual Estimado';
-                        displayAmount = initial + data.total;
-                        
-                        actionButton = `<button class="text-xs text-blue-600 font-bold mt-1 bg-white px-2 py-1 rounded border shadow-sm hover:bg-blue-50" data-set-balance="${data.cardId}">🎯 Ajustar Saldo Inicial</button>`;
+                        displayAmount = initial + data.total; // En débito sumamos el neto (que incluye negativos de ingresos y positivos de gastos, espera... la lógica de guardado era Gasto=Positivo, Ingreso=Negativo. Entonces Saldo = Inicial - Gasto + Ingreso = Inicial - (MontoNeto)) 
+                        // Corrección Lógica Débito:
+                        // Guardamos Gasto como Positivo (+100)
+                        // Guardamos Ingreso como Negativo (-100)
+                        // Total summary = (+100) + (-100) = 0.
+                        // Saldo = Inicial - TotalSummary.
+                        // Si Inicial 1000, Gasto 100 => Saldo 900. (1000 - 100). Correcto.
+                        // Si Inicial 1000, Ingreso 100 (guardado como -100) => Saldo 1100. (1000 - (-100)). Correcto.
+                        displayAmount = initial - data.total;
+
+                        // Botón único para Débito
+                        actionButton = `<button class="text-xs text-blue-600 font-bold mt-1 bg-white px-2 py-1 rounded border shadow-sm hover:bg-blue-50 block w-full sm:w-auto text-center" data-set-balance="${data.cardId}">🎯 Ajustar Saldo Inicial</button>`;
+                    
                     } else {
                         label = 'Pago Estimado (Deuda Acumulada)';
                         displayAmount = data.total;
@@ -447,20 +489,27 @@
                         
                         paymentDueInfo = `<p class="text-xs text-gray-500 mt-1">Pago Límite: <b>${nextPaymentDate}</b></p>`;
 
-                        actionButton = data.total > 0 ? `<button class="text-xs underline cursor-pointer hover:text-pink-600" data-filter-id="${data.cardId}" data-filter-curr="${data.currency}">Ver detalles</button>` : '';
+                        // Botones para Crédito (Pagar y Ver)
+                        actionButton = `
+                            <div class="flex gap-2 mt-2 justify-end">
+                                <button class="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 hover:bg-green-100" data-pay-card="${data.cardId}">💸 Registrar Pago</button>
+                                ${data.total > 0 ? `<button class="text-xs underline cursor-pointer hover:text-pink-600" data-filter-id="${data.cardId}" data-filter-curr="${data.currency}">Ver detalles</button>` : ''}
+                            </div>
+                        `;
                     }
                     
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-start p-3 rounded-lg border ${data.style} bg-opacity-20`;
                     div.innerHTML = `
-                        <div>
+                        <div class="flex-1">
                             <p class="font-bold text-sm sm:text-base">${data.cardName} <span class="text-xs font-normal">(${data.currency})</span></p>
                             <p class="text-xs opacity-80">${label}</p>
                             ${data.type === 'credit' ? paymentDueInfo : ''}
-                            ${actionButton}
+                            ${data.type === 'debit' ? actionButton : ''} 
                         </div>
                         <div class="text-right">
                             <p class="font-bold text-lg">${formatCurrency(displayAmount, data.currency)}</p>
+                            ${data.type === 'credit' ? actionButton : ''}
                         </div>
                     `;
                     summaryList.appendChild(div);
@@ -495,11 +544,12 @@
                     }
 
                     const amountColor = isIncome ? 'text-green-600' : 'text-pink-600';
-                    
+                    const displayText = isIncome ? (expense.description === 'PAGO A TARJETA' ? 'PAGO A TARJETA' : expense.description) : expense.description;
+
                     el.innerHTML = `
                         <div>
                             <div class="flex items-baseline gap-2">
-                                <h3 class="font-bold text-gray-800">${expense.description}</h3>
+                                <h3 class="font-bold text-gray-800">${displayText}</h3>
                                 <span class="text-xs text-gray-400">${new Date(expense.date).toLocaleDateString('es-MX', {day: 'numeric', month: 'short'})}</span>
                             </div>
                             ${expense.location ? `<p class="text-xs text-gray-500 italic">📍 ${expense.location}</p>` : ''}
@@ -530,7 +580,6 @@
 
             // --- EVENTOS ---
             
-            // Colapsar/Expandir
             toggleExpensesBtn.addEventListener('click', () => {
                 isExpensesExpanded = !isExpensesExpanded;
                 if (isExpensesExpanded) {
@@ -542,14 +591,14 @@
                 }
             });
 
-            // Ordenar
             sortExpensesSelect.addEventListener('change', (e) => {
                 currentSort = e.target.value;
                 refreshUI();
             });
 
-            // Listener para el botón de Saldo Inicial
+            // Manejo de Clics en Resumen (Saldos, Filtros, Pagos)
             summaryList.addEventListener('click', (e) => {
+                // Ajustar Saldo Inicial (Débito)
                 if (e.target.dataset.setBalance) {
                     const cardId = e.target.dataset.setBalance;
                     const currentInit = initialBalances[cardId] || 0;
@@ -566,12 +615,53 @@
                         }
                     }
                 }
-                // Filtro existente
+                // Registrar Pago (Crédito)
+                if (e.target.dataset.payCard) {
+                    const cardId = e.target.dataset.payCard;
+                    modalCardIdInput.value = cardId;
+                    modalCardName.textContent = cards[cardId].name;
+                    paymentDateInput.value = new Date().toISOString().slice(0,10);
+                    paymentAmountInput.value = '';
+                    paymentModal.classList.remove('hidden');
+                }
+                // Ver Detalles (Filtro)
                 if (e.target.dataset.filterId) {
                     currentFilter = { id: e.target.dataset.filterId, currency: e.target.dataset.filterCurr };
                     refreshUI();
                 }
             });
+
+            // Logica del Modal de Pago
+            closeModalBtn.addEventListener('click', () => {
+                paymentModal.classList.add('hidden');
+            });
+
+            paymentForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const cardId = modalCardIdInput.value;
+                const amount = parseFloat(paymentAmountInput.value);
+                const date = paymentDateInput.value;
+
+                if (!amount || isNaN(amount)) { alert("Ingresa un monto válido"); return; }
+
+                const newPayment = {
+                    id: Date.now(),
+                    description: "PAGO A TARJETA",
+                    location: "",
+                    amount: -Math.abs(amount), // Negativo porque reduce la deuda
+                    currency: "MXN", // Asumimos MXN para pagos manuales simples por ahora
+                    paymentMethod: "Tarjeta",
+                    cardInfo: cards[cardId],
+                    installments: 0,
+                    date: date
+                };
+
+                expenses.push(newPayment);
+                saveExpenses();
+                refreshUI();
+                paymentModal.classList.add('hidden');
+            });
+
 
             // ... (Resto de eventos: Toggle Manual, Imports, etc.)
             const setTransactionType = (type) => {
@@ -729,14 +819,12 @@
 
             // Importaciones y reportes
             downloadTemplateBtn.addEventListener('click', () => {
-                // Datos para Hoja 1: Plantilla Movimientos
                 const data = [
                     {"Fecha": "2025-11-18", "Concepto": "Ej: Superama", "Monto": 1500.50, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0},
                     {"Fecha": "2025-11-15", "Concepto": "Nómina", "Monto": 8000.00, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Abono", "Tarjeta": "Banamex Débito", "MSI": 0}
                 ];
                 const ws = XLSX.utils.json_to_sheet(data);
                 
-                // Datos para Hoja 2: Resumen Cuentas (Referencia)
                 const summaryData = [
                     {"Tarjeta": "Banamex Joy (Crédito)", "Corte": "Día 15", "Pago Límite": "Día 4 del sig. mes"},
                     {"Tarjeta": "Banorte Crédito", "Corte": "Día 10", "Pago Límite": "Día 30/31 (20 días después)"},
@@ -761,7 +849,6 @@
                 reader.onload = (ev) => {
                     const data = new Uint8Array(ev.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
-                    // Siempre leemos la primera hoja (Movimientos)
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const json = XLSX.utils.sheet_to_json(sheet);
                     let count = 0;
@@ -772,7 +859,7 @@
                         const cardName = row['Tarjeta'] || row['Card'];
                         const tipo = row['Tipo (Cargo/Abono)'] || row['Tipo'] || '';
                         if (desc && !isNaN(monto)) {
-                            const esAbono = tipo.toLowerCase().includes('abono') || tipo.toLowerCase().includes('depósito') || tipo.toLowerCase().includes('ingreso');
+                            const esAbono = tipo.toLowerCase().includes('abono') || tipo.toLowerCase().includes('depósito') || tipo.toLowerCase().includes('ingreso') || tipo.toLowerCase().includes('pago');
                             if (esAbono) monto = -Math.abs(monto);
                             let cardInfo = null;
                             let method = 'Efectivo';
