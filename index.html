@@ -73,38 +73,6 @@
             <p class="text-gray-500 mt-2 text-lg">Control de Tarjetas y Viajes</p>
         </header>
 
-        <!-- Sección de Importación -->
-        <div class="bg-blue-50 p-6 rounded-2xl shadow-lg border border-blue-100">
-            <h2 class="text-xl font-bold mb-4 text-blue-700 flex items-center gap-2">
-                📂 Cargar Estados de Cuenta
-            </h2>
-            <p class="text-sm text-blue-600 mb-4">
-                Sube aquí tus archivos. Para registrar abonos en Excel, usa la columna "Tipo" o pon el monto en negativo.
-            </p>
-            
-            <div class="space-y-3">
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <button id="download-template-btn" class="flex-1 bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border border-blue-200 hover:bg-blue-50 transition-colors text-sm">
-                        1. Descargar Plantilla Excel
-                    </button>
-                    <label class="flex-1 bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors text-center cursor-pointer text-sm flex items-center justify-center gap-2">
-                        <span>2. Subir Excel (.xlsx)</span>
-                        <input type="file" id="import-excel-input" accept=".xlsx, .xls" class="hidden">
-                    </label>
-                </div>
-                <div class="relative flex py-2 items-center">
-                    <div class="flex-grow border-t border-blue-200"></div>
-                    <span class="flex-shrink-0 mx-4 text-blue-400 text-xs">O INTENTA CON PDF</span>
-                    <div class="flex-grow border-t border-blue-200"></div>
-                </div>
-                <label class="block w-full bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border-2 border-dashed border-blue-300 hover:bg-blue-50 transition-colors text-center cursor-pointer text-sm">
-                    <span>📄 Subir Estado de Cuenta en PDF</span>
-                    <input type="file" id="import-pdf-input" accept=".pdf" class="hidden">
-                </label>
-            </div>
-            <p id="import-feedback" class="text-sm mt-3 font-medium hidden"></p>
-        </div>
-
         <!-- Sección de Resumen por Tarjeta -->
         <div class="bg-white p-6 rounded-2xl shadow-lg">
             <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center justify-between">
@@ -112,10 +80,6 @@
             </h2>
             <div id="summary-list" class="space-y-3">
                 <!-- Se llena con JS -->
-            </div>
-            <div id="current-filter" class="hidden mt-4 p-3 bg-pink-50 border border-pink-100 text-pink-700 rounded-lg text-sm flex justify-between items-center">
-                <span>Filtrando por: <span id="current-filter-text" class="font-semibold"></span></span>
-                <button id="clear-filter-btn" class="text-xs underline hover:text-pink-900">Ver todo</button>
             </div>
         </div>
 
@@ -127,11 +91,12 @@
 
                 <div>
                     <label for="description" class="block text-sm font-medium text-gray-600 mb-1">Descripción</label>
-                    <input type="text" id="description" placeholder="Ej: Café Starbucks" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
+                    <input type="text" id="description" placeholder="Ej: Café Starbucks o Depósito Nómina" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
                 </div>
+
                 <div>
                     <label for="location" class="block text-sm font-medium text-gray-600 mb-1">¿Dónde? (Opcional)</label>
-                    <input type="text" id="location" placeholder="Ej: Aeropuerto" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400">
+                    <input type="text" id="location" placeholder="Ej: Aeropuerto, Centro Comercial" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400">
                 </div>
 
                 <!-- Tipo de Movimiento -->
@@ -216,10 +181,13 @@
                  </button>
                  
                  <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <select id="sort-expenses" class="text-sm border-gray-200 border rounded-lg px-2 py-2 bg-white text-gray-600 focus:ring-pink-400 focus:border-pink-400 shadow-sm">
-                        <option value="date">📅 Por Fecha</option>
-                        <option value="card">💳 Por Tarjeta</option>
-                    </select>
+                    <div class="flex items-center gap-2">
+                        <label for="filter-card-select" class="text-sm font-medium text-gray-600 whitespace-nowrap">Filtrar:</label>
+                        <select id="filter-card-select" class="text-sm border-gray-200 border rounded-lg px-2 py-2 bg-white text-gray-600 focus:ring-pink-400 focus:border-pink-400 shadow-sm max-w-[150px]">
+                            <option value="all">Todas las cuentas</option>
+                            <!-- Se llena con JS -->
+                        </select>
+                    </div>
                     <button id="delete-all-btn" class="text-xs text-red-400 underline hover:text-red-600 whitespace-nowrap">Borrar Todo</button>
                  </div>
             </div>
@@ -230,6 +198,38 @@
                     <p class="text-gray-400 text-lg">No hay movimientos.<br>Sube un Excel o registra uno nuevo.</p>
                 </div>
             </div>
+        </div>
+
+         <!-- Sección de Importación -->
+         <div class="bg-blue-50 p-6 rounded-2xl shadow-lg border border-blue-100">
+            <h2 class="text-xl font-bold mb-4 text-blue-700 flex items-center gap-2">
+                📂 Cargar Estados de Cuenta
+            </h2>
+            <p class="text-sm text-blue-600 mb-4">
+                Sube aquí tus archivos.
+            </p>
+            
+            <div class="space-y-3">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button id="download-template-btn" class="flex-1 bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border border-blue-200 hover:bg-blue-50 transition-colors text-sm">
+                        1. Descargar Plantilla Excel
+                    </button>
+                    <label class="flex-1 bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors text-center cursor-pointer text-sm flex items-center justify-center gap-2">
+                        <span>2. Subir Excel (.xlsx)</span>
+                        <input type="file" id="import-excel-input" accept=".xlsx, .xls" class="hidden">
+                    </label>
+                </div>
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-blue-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-blue-400 text-xs">O INTENTA CON PDF</span>
+                    <div class="flex-grow border-t border-blue-200"></div>
+                </div>
+                <label class="block w-full bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border-2 border-dashed border-blue-300 hover:bg-blue-50 transition-colors text-center cursor-pointer text-sm">
+                    <span>📄 Subir Estado de Cuenta en PDF</span>
+                    <input type="file" id="import-pdf-input" accept=".pdf" class="hidden">
+                </label>
+            </div>
+            <p id="import-feedback" class="text-sm mt-3 font-medium hidden"></p>
         </div>
 
          <!-- Reportería -->
@@ -258,15 +258,12 @@
             const emptyState = document.getElementById('empty-state');
             const toggleExpensesBtn = document.getElementById('toggle-expenses-btn');
             const toggleIcon = document.getElementById('toggle-icon');
-            const sortExpensesSelect = document.getElementById('sort-expenses');
+            const filterCardSelect = document.getElementById('filter-card-select'); // Nuevo filtro
             const deleteAllBtn = document.getElementById('delete-all-btn');
 
             const summaryList = document.getElementById('summary-list');
             const generateReportBtn = document.getElementById('generate-report-btn');
             const reportFeedback = document.getElementById('report-feedback');
-            const currentFilterBox = document.getElementById('current-filter');
-            const currentFilterText = document.getElementById('current-filter-text');
-            const clearFilterBtn = document.getElementById('clear-filter-btn');
             
             const paymentModal = document.getElementById('payment-modal');
             const paymentForm = document.getElementById('payment-form');
@@ -302,13 +299,20 @@
                 'invex': { name: 'Invex Aeropuerto', type: 'credit', cutDay: 27, payDay: 18, style: 'bg-yellow-50 border-yellow-500 text-yellow-700' } 
             };
 
+            // Llenar el selector de filtro
+            Object.keys(cards).forEach(key => {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = cards[key].name;
+                filterCardSelect.appendChild(option);
+            });
+
             const STORAGE_KEY = 'gastos_mama_v2'; 
             const BALANCE_KEY = 'saldos_iniciales_mama';
             
             let expenses = [];
             let initialBalances = {};
-            let currentFilter = null;
-            let currentSort = 'date'; 
+            let currentFilterCardId = 'all'; // Filtro por tarjeta
             let isExpensesExpanded = true;
 
             try {
@@ -329,21 +333,8 @@
 
             const getSortedExpenses = () => {
                 const list = [...expenses];
-                if (currentSort === 'date') {
-                    // Orden descendente por fecha
-                    return list.sort((a, b) => new Date(b.date) - new Date(a.date));
-                } else if (currentSort === 'card') {
-                    return list.sort((a, b) => {
-                        let nameA = a.paymentMethod;
-                        if (a.paymentMethod === 'Tarjeta' && a.cardInfo) nameA = a.cardInfo.name;
-                        let nameB = b.paymentMethod;
-                        if (b.paymentMethod === 'Tarjeta' && b.cardInfo) nameB = b.cardInfo.name;
-                        const comparison = nameA.localeCompare(nameB);
-                        if (comparison === 0) return new Date(b.date) - new Date(a.date);
-                        return comparison;
-                    });
-                }
-                return list;
+                // Siempre ordenar por fecha descendente
+                return list.sort((a, b) => new Date(b.date) - new Date(a.date));
             };
 
             const calculatePaymentDate = (expense) => {
@@ -353,7 +344,8 @@
                 const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
                 const [year, month, day] = expense.date.split('-').map(Number);
                 const { cutDay, payDay, payTermDays } = expense.cardInfo;
-
+                
+                // Cálculo simplificado de fecha límite
                 let cutOffYear = year;
                 let cutOffMonth = month - 1;
 
@@ -364,7 +356,6 @@
                         cutOffYear += 1;
                     }
                 }
-                
                 const cutOffDate = new Date(cutOffYear, cutOffMonth, cutDay);
                 let paymentDate;
 
@@ -401,20 +392,18 @@
                             }
                             
                             if (cards[cardId].type === 'debit') {
-                                // En Débito: Sumamos Gastos (Positivos) y Abonos (Negativos)
-                                // Total = GastoNeto.
                                 summary[key].total += expense.amount;
                             } else {
-                                // En Crédito:
-                                // Deuda = Gastos - Pagos
-                                // expense.amount positivo = Gasto (Suma deuda)
-                                // expense.amount negativo = Pago (Resta deuda)
-                                // Si MSI:
-                                let amountToAdd = expense.amount;
-                                if (expense.amount > 0 && expense.installments > 0) {
-                                    amountToAdd = expense.amount / expense.installments;
+                                // Crédito: Gasto suma deuda, Pago resta deuda
+                                if (expense.amount < 0) {
+                                    summary[key].total += expense.amount; 
+                                } else {
+                                    let amountToAdd = expense.amount;
+                                    if (expense.amount > 0 && expense.installments > 0) {
+                                        amountToAdd = expense.amount / expense.installments;
+                                    }
+                                    summary[key].total += amountToAdd;
                                 }
-                                summary[key].total += amountToAdd;
                             }
                         }
                     }
@@ -436,37 +425,34 @@
 
                     if (data.type === 'debit') {
                         label = 'Saldo Actual Estimado';
-                        // Saldo = Inicial - (Gastos - Ingresos)
-                        // Saldo = Inicial - TotalNeto
+                        // Saldo = Inicial - GastosNetos
                         displayAmount = initial - data.total;
-                        
-                        // Botón Saldo Inicial
                         actionButton = `<button class="text-xs text-blue-600 font-bold mt-1 bg-white px-2 py-1 rounded border shadow-sm hover:bg-blue-50 block w-full sm:w-auto text-center" data-set-balance="${data.cardId}">🎯 Ajustar Saldo Inicial</button>`;
-                    
                     } else {
-                        // Crédito:
-                        // DeudaTotal = DeudaInicial + TotalNeto(Gastos-Pagos)
+                        // Crédito: DeudaTotal = DeudaInicial(Positiva) + Gastos - Pagos
                         displayAmount = initial + data.total;
 
                         if (displayAmount > 0) {
                             label = 'Deuda Estimada (Pagar)';
                             textColorClass = 'text-orange-600';
-                        } else {
+                        } else if (displayAmount < 0) {
                             label = 'Saldo a Favor';
                             textColorClass = 'text-green-600';
                             displayAmount = Math.abs(displayAmount);
+                        } else {
+                            label = 'Sin Deuda';
+                            textColorClass = 'text-gray-500';
                         }
                         
                         const tempExpense = { date: new Date().toISOString().slice(0,10), cardInfo: cards[data.cardId], amount: 100, installments: 0 };
                         const nextPaymentDate = calculatePaymentDate(tempExpense);
                         paymentDueInfo = `<p class="text-xs text-gray-500 mt-1">Pago Límite: <b>${nextPaymentDate}</b></p>`;
 
-                        // Botones Crédito
                         actionButton = `
                             <div class="flex flex-wrap gap-2 mt-2 justify-end">
                                 <button class="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded border border-blue-200 hover:bg-blue-100" data-set-balance="${data.cardId}">🎯 Deuda Inicial</button>
                                 <button class="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 hover:bg-green-100" data-pay-card="${data.cardId}">💸 Registrar Pago</button>
-                                ${data.total !== 0 ? `<button class="text-xs underline cursor-pointer hover:text-pink-600" data-filter-id="${data.cardId}" data-filter-curr="${data.currency}">Ver detalles</button>` : ''}
+                                <button class="text-xs underline cursor-pointer hover:text-pink-600" data-filter-card="${data.cardId}">Ver detalles</button>
                             </div>
                         `;
                     }
@@ -493,9 +479,9 @@
                 expensesList.innerHTML = '';
                 const sorted = getSortedExpenses();
 
-                const filtered = currentFilter 
-                    ? sorted.filter(e => e.cardInfo && Object.keys(cards).find(key => cards[key].name === e.cardInfo.name) === currentFilter.id && e.currency === currentFilter.currency)
-                    : sorted;
+                const filtered = currentFilterCardId === 'all' 
+                    ? sorted 
+                    : sorted.filter(e => e.cardInfo && Object.keys(cards).find(key => cards[key].name === e.cardInfo.name) === currentFilterCardId);
 
                 if (filtered.length === 0) {
                     emptyState.classList.remove('hidden');
@@ -509,7 +495,6 @@
                     el.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-start';
                     
                     const isIncome = expense.amount < 0;
-                    
                     let subtext = expense.paymentMethod;
                     if (expense.paymentMethod === 'Tarjeta') {
                         const msiInfo = expense.installments > 0 ? ` • ${expense.installments} MSI` : '';
@@ -543,12 +528,8 @@
             const refreshUI = () => {
                 renderSummary();
                 renderExpenses();
-                if (currentFilter) {
-                    currentFilterBox.classList.remove('hidden');
-                    currentFilterText.textContent = `${cards[currentFilter.id].name} (${currentFilter.currency})`;
-                } else {
-                    currentFilterBox.classList.add('hidden');
-                }
+                // Sincronizar select con estado
+                filterCardSelect.value = currentFilterCardId;
             };
 
             // --- EVENTOS ---
@@ -564,8 +545,8 @@
                 }
             });
 
-            sortExpensesSelect.addEventListener('change', (e) => {
-                currentSort = e.target.value;
+            filterCardSelect.addEventListener('change', (e) => {
+                currentFilterCardId = e.target.value;
                 refreshUI();
             });
 
@@ -576,15 +557,16 @@
                     const currentInit = initialBalances[cardId] || 0;
                     const isCredit = cards[cardId].type === 'credit';
                     const promptText = isCredit 
-                        ? `Ingresa la DEUDA INICIAL de ${cards[cardId].name} (antes de los movimientos cargados):`
-                        : `Ingresa el SALDO INICIAL de ${cards[cardId].name} (antes de los movimientos cargados):`;
+                        ? `Ingresa la DEUDA (POSITTIVA) INICIAL de ${cards[cardId].name}:`
+                        : `Ingresa el SALDO INICIAL de ${cards[cardId].name}:`;
                     
                     const newVal = prompt(promptText, currentInit);
                     
                     if (newVal !== null) {
                         const floatVal = parseFloat(newVal);
                         if (!isNaN(floatVal)) {
-                            initialBalances[cardId] = floatVal;
+                            // CLAVE: Si es crédito, forzamos positivo (Deuda)
+                            initialBalances[cardId] = isCredit ? Math.abs(floatVal) : floatVal;
                             saveBalances();
                             refreshUI();
                         } else {
@@ -600,9 +582,13 @@
                     paymentAmountInput.value = '';
                     paymentModal.classList.remove('hidden');
                 }
-                if (e.target.dataset.filterId) {
-                    currentFilter = { id: e.target.dataset.filterId, currency: e.target.dataset.filterCurr };
+                // Clic en "Ver detalles" activa el filtro
+                if (e.target.dataset.filterCard) {
+                    currentFilterCardId = e.target.dataset.filterCard;
                     refreshUI();
+                    // Scroll a la lista
+                    expensesContainer.scrollIntoView({ behavior: 'smooth' });
+                    if (!isExpensesExpanded) toggleExpensesBtn.click();
                 }
             });
 
@@ -774,11 +760,6 @@
                 }
             });
 
-            clearFilterBtn.addEventListener('click', () => {
-                currentFilter = null;
-                refreshUI();
-            });
-
             deleteAllBtn.addEventListener('click', () => {
                 if(confirm('¿ESTÁS SEGURA? Esto borrará todos los registros.')) {
                     expenses = [];
@@ -789,6 +770,7 @@
                 }
             });
 
+            // Importaciones y reportes
             downloadTemplateBtn.addEventListener('click', () => {
                 const data = [
                     {"Fecha": "2025-11-18", "Concepto": "Ej: Superama", "Monto": 1500.50, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0},
