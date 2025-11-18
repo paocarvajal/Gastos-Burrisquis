@@ -328,21 +328,12 @@
                 } else if (currentSort === 'card') {
                     // Ordenar por nombre de tarjeta alfabéticamente
                     return list.sort((a, b) => {
-                        // Obtener nombre A
                         let nameA = a.paymentMethod;
                         if (a.paymentMethod === 'Tarjeta' && a.cardInfo) nameA = a.cardInfo.name;
-                        
-                        // Obtener nombre B
                         let nameB = b.paymentMethod;
                         if (b.paymentMethod === 'Tarjeta' && b.cardInfo) nameB = b.cardInfo.name;
-                        
-                        // Comparar nombres
                         const comparison = nameA.localeCompare(nameB);
-                        
-                        // Si son la misma tarjeta, ordenar por fecha secundaria
-                        if (comparison === 0) {
-                             return new Date(b.date) - new Date(a.date);
-                        }
+                        if (comparison === 0) return new Date(b.date) - new Date(a.date);
                         return comparison;
                     });
                 }
@@ -466,11 +457,10 @@
                             <p class="font-bold text-sm sm:text-base">${data.cardName} <span class="text-xs font-normal">(${data.currency})</span></p>
                             <p class="text-xs opacity-80">${label}</p>
                             ${data.type === 'credit' ? paymentDueInfo : ''}
-                            ${data.type === 'debit' ? actionButton : ''}
+                            ${actionButton}
                         </div>
                         <div class="text-right">
                             <p class="font-bold text-lg">${formatCurrency(displayAmount, data.currency)}</p>
-                            ${data.type === 'credit' ? actionButton : ''}
                         </div>
                     `;
                     summaryList.appendChild(div);
@@ -487,7 +477,7 @@
 
                 if (filtered.length === 0) {
                     emptyState.classList.remove('hidden');
-                    expensesContainer.classList.remove('hidden'); // Force show if empty but filter active
+                    expensesContainer.classList.remove('hidden'); 
                     return;
                 }
                 emptyState.classList.add('hidden');
@@ -739,14 +729,29 @@
 
             // Importaciones y reportes
             downloadTemplateBtn.addEventListener('click', () => {
+                // Datos para Hoja 1: Plantilla Movimientos
                 const data = [
                     {"Fecha": "2025-11-18", "Concepto": "Ej: Superama", "Monto": 1500.50, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0},
                     {"Fecha": "2025-11-15", "Concepto": "Nómina", "Monto": 8000.00, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Abono", "Tarjeta": "Banamex Débito", "MSI": 0}
                 ];
                 const ws = XLSX.utils.json_to_sheet(data);
+                
+                // Datos para Hoja 2: Resumen Cuentas (Referencia)
+                const summaryData = [
+                    {"Tarjeta": "Banamex Joy (Crédito)", "Corte": "Día 15", "Pago Límite": "Día 4 del sig. mes"},
+                    {"Tarjeta": "Banorte Crédito", "Corte": "Día 10", "Pago Límite": "Día 30/31 (20 días después)"},
+                    {"Tarjeta": "Invex Aeropuerto (Crédito)", "Corte": "Día 27", "Pago Límite": "Día 18 del sig. mes"},
+                    {"Tarjeta": "Banamex Débito", "Corte": "N/A", "Pago Límite": "N/A"},
+                    {"Tarjeta": "Banorte Débito", "Corte": "N/A", "Pago Límite": "N/A"},
+                    {"Tarjeta": "Bienestar (Débito)", "Corte": "N/A", "Pago Límite": "N/A"}
+                ];
+                const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+
                 const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
-                XLSX.writeFile(wb, "Plantilla_Movimientos.xlsx");
+                XLSX.utils.book_append_sheet(wb, ws, "Movimientos");
+                XLSX.utils.book_append_sheet(wb, wsSummary, "Resumen_Cuentas");
+                
+                XLSX.writeFile(wb, "Plantilla_Gastos.xlsx");
             });
 
             importExcelInput.addEventListener('change', (e) => {
@@ -756,6 +761,7 @@
                 reader.onload = (ev) => {
                     const data = new Uint8Array(ev.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
+                    // Siempre leemos la primera hoja (Movimientos)
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const json = XLSX.utils.sheet_to_json(sheet);
                     let count = 0;
