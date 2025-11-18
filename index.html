@@ -73,6 +73,38 @@
             <p class="text-gray-500 mt-2 text-lg">Control de Tarjetas y Viajes</p>
         </header>
 
+        <!-- Sección de Importación -->
+        <div class="bg-blue-50 p-6 rounded-2xl shadow-lg border border-blue-100">
+            <h2 class="text-xl font-bold mb-4 text-blue-700 flex items-center gap-2">
+                📂 Cargar Estados de Cuenta
+            </h2>
+            <p class="text-sm text-blue-600 mb-4">
+                Sube aquí tus archivos. Para registrar abonos en Excel, usa la columna "Tipo" o pon el monto en negativo.
+            </p>
+            
+            <div class="space-y-3">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button id="download-template-btn" class="flex-1 bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border border-blue-200 hover:bg-blue-50 transition-colors text-sm">
+                        1. Descargar Plantilla Excel
+                    </button>
+                    <label class="flex-1 bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors text-center cursor-pointer text-sm flex items-center justify-center gap-2">
+                        <span>2. Subir Excel (.xlsx)</span>
+                        <input type="file" id="import-excel-input" accept=".xlsx, .xls" class="hidden">
+                    </label>
+                </div>
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-blue-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-blue-400 text-xs">O INTENTA CON PDF</span>
+                    <div class="flex-grow border-t border-blue-200"></div>
+                </div>
+                <label class="block w-full bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border-2 border-dashed border-blue-300 hover:bg-blue-50 transition-colors text-center cursor-pointer text-sm">
+                    <span>📄 Subir Estado de Cuenta en PDF</span>
+                    <input type="file" id="import-pdf-input" accept=".pdf" class="hidden">
+                </label>
+            </div>
+            <p id="import-feedback" class="text-sm mt-3 font-medium hidden"></p>
+        </div>
+
         <!-- Sección de Resumen por Tarjeta -->
         <div class="bg-white p-6 rounded-2xl shadow-lg">
             <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center justify-between">
@@ -200,38 +232,6 @@
             </div>
         </div>
 
-         <!-- Sección de Importación -->
-         <div class="bg-blue-50 p-6 rounded-2xl shadow-lg border border-blue-100">
-            <h2 class="text-xl font-bold mb-4 text-blue-700 flex items-center gap-2">
-                📂 Cargar Estados de Cuenta
-            </h2>
-            <p class="text-sm text-blue-600 mb-4">
-                Sube aquí tus archivos.
-            </p>
-            
-            <div class="space-y-3">
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <button id="download-template-btn" class="flex-1 bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border border-blue-200 hover:bg-blue-50 transition-colors text-sm">
-                        1. Descargar Plantilla Excel
-                    </button>
-                    <label class="flex-1 bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors text-center cursor-pointer text-sm flex items-center justify-center gap-2">
-                        <span>2. Subir Excel (.xlsx)</span>
-                        <input type="file" id="import-excel-input" accept=".xlsx, .xls" class="hidden">
-                    </label>
-                </div>
-                <div class="relative flex py-2 items-center">
-                    <div class="flex-grow border-t border-blue-200"></div>
-                    <span class="flex-shrink-0 mx-4 text-blue-400 text-xs">O INTENTA CON PDF</span>
-                    <div class="flex-grow border-t border-blue-200"></div>
-                </div>
-                <label class="block w-full bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border-2 border-dashed border-blue-300 hover:bg-blue-50 transition-colors text-center cursor-pointer text-sm">
-                    <span>📄 Subir Estado de Cuenta en PDF</span>
-                    <input type="file" id="import-pdf-input" accept=".pdf" class="hidden">
-                </label>
-            </div>
-            <p id="import-feedback" class="text-sm mt-3 font-medium hidden"></p>
-        </div>
-
          <!-- Reportería -->
         <div class="bg-white p-6 rounded-2xl shadow-lg">
             <h2 class="text-xl font-bold mb-4 text-gray-700">Generar Reporte</h2>
@@ -258,7 +258,7 @@
             const emptyState = document.getElementById('empty-state');
             const toggleExpensesBtn = document.getElementById('toggle-expenses-btn');
             const toggleIcon = document.getElementById('toggle-icon');
-            const filterCardSelect = document.getElementById('filter-card-select'); // Nuevo filtro
+            const filterCardSelect = document.getElementById('filter-card-select'); 
             const deleteAllBtn = document.getElementById('delete-all-btn');
 
             const summaryList = document.getElementById('summary-list');
@@ -312,7 +312,7 @@
             
             let expenses = [];
             let initialBalances = {};
-            let currentFilterCardId = 'all'; // Filtro por tarjeta
+            let currentFilterCardId = 'all'; 
             let isExpensesExpanded = true;
 
             try {
@@ -333,7 +333,7 @@
 
             const getSortedExpenses = () => {
                 const list = [...expenses];
-                // Siempre ordenar por fecha descendente
+                // Siempre por fecha descendente
                 return list.sort((a, b) => new Date(b.date) - new Date(a.date));
             };
 
@@ -345,7 +345,6 @@
                 const [year, month, day] = expense.date.split('-').map(Number);
                 const { cutDay, payDay, payTermDays } = expense.cardInfo;
                 
-                // Cálculo simplificado de fecha límite
                 let cutOffYear = year;
                 let cutOffMonth = month - 1;
 
@@ -394,7 +393,6 @@
                             if (cards[cardId].type === 'debit') {
                                 summary[key].total += expense.amount;
                             } else {
-                                // Crédito: Gasto suma deuda, Pago resta deuda
                                 if (expense.amount < 0) {
                                     summary[key].total += expense.amount; 
                                 } else {
@@ -425,11 +423,9 @@
 
                     if (data.type === 'debit') {
                         label = 'Saldo Actual Estimado';
-                        // Saldo = Inicial - GastosNetos
                         displayAmount = initial - data.total;
                         actionButton = `<button class="text-xs text-blue-600 font-bold mt-1 bg-white px-2 py-1 rounded border shadow-sm hover:bg-blue-50 block w-full sm:w-auto text-center" data-set-balance="${data.cardId}">🎯 Ajustar Saldo Inicial</button>`;
                     } else {
-                        // Crédito: DeudaTotal = DeudaInicial(Positiva) + Gastos - Pagos
                         displayAmount = initial + data.total;
 
                         if (displayAmount > 0) {
@@ -528,7 +524,6 @@
             const refreshUI = () => {
                 renderSummary();
                 renderExpenses();
-                // Sincronizar select con estado
                 filterCardSelect.value = currentFilterCardId;
             };
 
@@ -551,13 +546,12 @@
             });
 
             summaryList.addEventListener('click', (e) => {
-                // Ajustar Saldo/Deuda Inicial
                 if (e.target.dataset.setBalance) {
                     const cardId = e.target.dataset.setBalance;
                     const currentInit = initialBalances[cardId] || 0;
                     const isCredit = cards[cardId].type === 'credit';
                     const promptText = isCredit 
-                        ? `Ingresa la DEUDA (POSITTIVA) INICIAL de ${cards[cardId].name}:`
+                        ? `Ingresa la DEUDA (POSITIVA) INICIAL de ${cards[cardId].name}:`
                         : `Ingresa el SALDO INICIAL de ${cards[cardId].name}:`;
                     
                     const newVal = prompt(promptText, currentInit);
@@ -565,7 +559,6 @@
                     if (newVal !== null) {
                         const floatVal = parseFloat(newVal);
                         if (!isNaN(floatVal)) {
-                            // CLAVE: Si es crédito, forzamos positivo (Deuda)
                             initialBalances[cardId] = isCredit ? Math.abs(floatVal) : floatVal;
                             saveBalances();
                             refreshUI();
@@ -582,11 +575,9 @@
                     paymentAmountInput.value = '';
                     paymentModal.classList.remove('hidden');
                 }
-                // Clic en "Ver detalles" activa el filtro
                 if (e.target.dataset.filterCard) {
                     currentFilterCardId = e.target.dataset.filterCard;
                     refreshUI();
-                    // Scroll a la lista
                     expensesContainer.scrollIntoView({ behavior: 'smooth' });
                     if (!isExpensesExpanded) toggleExpensesBtn.click();
                 }
@@ -801,16 +792,28 @@
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     const data = new Uint8Array(ev.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
+                    // Use 'cellDates: true' to properly handle Excel serial dates
+                    const workbook = XLSX.read(data, {type: 'array', cellDates: true});
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const json = XLSX.utils.sheet_to_json(sheet);
                     let count = 0;
                     json.forEach(row => {
                         const desc = row['Concepto'] || row['Descripción'] || row['Description'];
                         let monto = parseFloat(row['Monto'] || row['Amount'] || row['Importe']);
-                        const fechaRaw = row['Fecha'] || row['Date'];
+                        let fechaRaw = row['Fecha'] || row['Date'];
+                        
+                        // Handle date parsing logic
+                        if (fechaRaw instanceof Date) {
+                             // Convert JS Date object to YYYY-MM-DD string manually to avoid UTC shift issues
+                             const year = fechaRaw.getFullYear();
+                             const month = String(fechaRaw.getMonth() + 1).padStart(2, '0');
+                             const day = String(fechaRaw.getDate()).padStart(2, '0');
+                             fechaRaw = `${year}-${month}-${day}`;
+                        }
+
                         const cardName = row['Tarjeta'] || row['Card'];
                         const tipo = row['Tipo (Cargo/Abono)'] || row['Tipo'] || '';
+                        
                         if (desc && !isNaN(monto)) {
                             const esAbono = tipo.toLowerCase().includes('abono') || tipo.toLowerCase().includes('depósito') || tipo.toLowerCase().includes('ingreso') || tipo.toLowerCase().includes('pago');
                             if (esAbono) monto = -Math.abs(monto);
