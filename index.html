@@ -1,187 +1,199 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Gastos</title>
+    <title>Finanzas de Mamá 💖</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Librería para Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Librería para PDF (Básica) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        glass: 'rgba(255, 255, 255, 0.7)',
+                        glassBorder: 'rgba(255, 255, 255, 0.5)',
+                    }
+                }
+            }
+        }
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f9fafb; 
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            background-attachment: fixed;
         }
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            cursor: pointer;
-            opacity: 0.6;
-            filter: invert(0.8);
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
         }
-        .rotate-180 {
-            transform: rotate(180deg);
+
+        .glass-button {
+            background: linear-gradient(to right, #ec4899, #f43f5e);
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
         }
-        .transition-transform {
-            transition-property: transform;
-            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-            transition-duration: 300ms;
+
+        .glass-button:hover {
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
+            transform: translateY(-1px);
         }
-        #payment-modal {
-            background-color: rgba(0, 0, 0, 0.5);
+
+        /* Smooth transitions */
+        .transition-all-300 {
+            transition: all 0.3s ease;
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 relative">
 
-    <!-- Modal de Registro de Pago -->
-    <div id="payment-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all">
-            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                💸 Registrar Pago a Tarjeta
-            </h3>
-            <p class="text-sm text-gray-500 mb-4">Abonar a deuda de: <b id="modal-card-name" class="text-gray-800"></b></p>
-            
-            <form id="payment-form" class="space-y-4">
-                <input type="hidden" id="modal-card-id">
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Monto del Pago</label>
-                    <input type="number" id="payment-amount" placeholder="0.00" step="0.01" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-green-500 focus:border-green-500" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">Fecha del Pago</label>
-                    <input type="date" id="payment-date" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-green-500 focus:border-green-500" required>
-                </div>
-                <div class="flex gap-3 mt-6">
-                    <button type="button" id="close-modal-btn" class="flex-1 py-3 text-gray-600 bg-gray-100 rounded-xl font-medium hover:bg-gray-200 transition-colors">Cancelar</button>
-                    <button type="submit" class="flex-1 py-3 text-white bg-green-600 rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md">Guardar Pago</button>
-                </div>
-            </form>
-        </div>
-    </div>
+<body class="min-h-screen text-slate-800 pb-20">
 
-    <div class="container mx-auto max-w-2xl p-4 sm:p-6 space-y-8">
-
-        <header class="text-center">
-            <h1 class="text-3xl sm:text-4xl font-bold text-pink-500">Mis Gastos</h1>
-            <p class="text-gray-500 mt-2 text-lg">Control de Tarjetas y Viajes</p>
-        </header>
-
-        <!-- Sección de Importación -->
-        <div class="bg-blue-50 p-6 rounded-2xl shadow-lg border border-blue-100">
-            <h2 class="text-xl font-bold mb-4 text-blue-700 flex items-center gap-2">
-                📂 Cargar Estados de Cuenta
-            </h2>
-            <p class="text-sm text-blue-600 mb-4">
-                Sube aquí tus archivos. Para registrar abonos en Excel, usa la columna "Tipo" o pon el monto en negativo.
-            </p>
-            
-            <div class="space-y-3">
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <button id="download-template-btn" class="flex-1 bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border border-blue-200 hover:bg-blue-50 transition-colors text-sm">
-                        1. Descargar Plantilla Excel
-                    </button>
-                    <label class="flex-1 bg-blue-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors text-center cursor-pointer text-sm flex items-center justify-center gap-2">
-                        <span>2. Subir Excel (.xlsx)</span>
-                        <input type="file" id="import-excel-input" accept=".xlsx, .xls" class="hidden">
-                    </label>
-                </div>
-                <div class="relative flex py-2 items-center">
-                    <div class="flex-grow border-t border-blue-200"></div>
-                    <span class="flex-shrink-0 mx-4 text-blue-400 text-xs">O INTENTA CON PDF</span>
-                    <div class="flex-grow border-t border-blue-200"></div>
-                </div>
-                <label class="block w-full bg-white text-blue-600 font-semibold py-3 px-4 rounded-xl border-2 border-dashed border-blue-300 hover:bg-blue-50 transition-colors text-center cursor-pointer text-sm">
-                    <span>📄 Subir Estado de Cuenta en PDF</span>
-                    <input type="file" id="import-pdf-input" accept=".pdf" class="hidden">
-                </label>
+    <!-- Navbar Simple -->
+    <nav class="glass-panel sticky top-0 z-40 border-b border-white/50 px-4 py-4 mb-6">
+        <div class="container mx-auto max-w-3xl flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🌸</span>
+                <h1
+                    class="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-purple-600">
+                    Mis Finanzas
+                </h1>
             </div>
-            <p id="import-feedback" class="text-sm mt-3 font-medium hidden"></p>
+            <button id="reset-app-btn" class="text-xs text-slate-400 hover:text-red-500 transition-colors">
+                Restablecer App
+            </button>
         </div>
+    </nav>
 
-        <!-- Sección de Resumen por Tarjeta -->
-        <div class="bg-white p-6 rounded-2xl shadow-lg">
-            <h2 class="text-xl font-bold mb-4 text-gray-700 flex items-center justify-between">
-                Resumen de Cuentas
+    <div class="container mx-auto max-w-3xl px-4 space-y-8">
+
+        <!-- Resumen Principal (Tarjetas) -->
+        <section>
+            <h2 class="text-lg font-bold text-slate-700 mb-3 flex items-center gap-2">
+                💳 Estado de Cuentas
             </h2>
-            <div id="summary-list" class="space-y-3">
-                <!-- Se llena con JS -->
+            <div id="summary-list" class="grid gap-4 sm:grid-cols-2">
+                <!-- Cards generadas por JS -->
             </div>
-        </div>
+        </section>
 
-        <!-- Sección de Agregar Gasto Manual -->
-        <div class="bg-white p-6 rounded-2xl shadow-lg">
-            <h2 class="text-xl font-bold mb-4 text-gray-700">Agregar Movimiento Manual</h2>
-            <form id="expense-form" class="space-y-4">
+        <!-- Botones de Acción Rápida -->
+        <section class="grid grid-cols-2 gap-4">
+            <button onclick="document.getElementById('expense-section').scrollIntoView({behavior: 'smooth'})"
+                class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white transition-all-300 group cursor-pointer">
+                <div
+                    class="w-12 h-12 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    📝
+                </div>
+                <span class="font-semibold text-slate-700">Registrar Gasto</span>
+            </button>
+            <button onclick="document.getElementById('import-section').scrollIntoView({behavior: 'smooth'})"
+                class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-white transition-all-300 group cursor-pointer">
+                <div
+                    class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    📂
+                </div>
+                <span class="font-semibold text-slate-700">Cargar Estado</span>
+            </button>
+        </section>
+
+        <!-- Formulario de Registro -->
+        <section id="expense-section" class="glass-panel rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-pink-500 to-purple-500"></div>
+
+            <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                Nuevo Movimiento
+            </h2>
+
+            <form id="expense-form" class="space-y-6">
                 <input type="hidden" id="editing-expense-id">
 
-                <div>
-                    <label for="description" class="block text-sm font-medium text-gray-600 mb-1">Descripción</label>
-                    <input type="text" id="description" placeholder="Ej: Café Starbucks o Depósito Nómina" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
+                <!-- Tipo: Gasto vs Ingreso -->
+                <div class="flex p-1 bg-slate-100 rounded-xl">
+                    <button type="button" id="type-expense"
+                        class="flex-1 py-3 rounded-lg font-bold text-sm transition-all shadow-sm bg-white text-pink-600">
+                        ➖ Gasto (Cargo)
+                    </button>
+                    <button type="button" id="type-income"
+                        class="flex-1 py-3 rounded-lg font-bold text-sm transition-all text-slate-500 hover:text-slate-700">
+                        ➕ Ingreso (Abono)
+                    </button>
                 </div>
+                <input type="hidden" id="transaction-type" value="expense">
 
-                <div>
-                    <label for="location" class="block text-sm font-medium text-gray-600 mb-1">¿Dónde? (Opcional)</label>
-                    <input type="text" id="location" placeholder="Ej: Aeropuerto, Centro Comercial" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400">
-                </div>
-
-                <!-- Tipo de Movimiento -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-2">Tipo de Movimiento</label>
-                    <div class="flex gap-2">
-                        <button type="button" id="type-expense" class="flex-1 py-2 px-4 rounded-lg border-2 border-pink-500 bg-pink-500 text-white font-medium transition-all">Gasto (Cargo)</button>
-                        <button type="button" id="type-income" class="flex-1 py-2 px-4 rounded-lg border-2 border-gray-200 text-gray-600 font-medium transition-all">Ingreso (Abono)</button>
+                <!-- Monto y Moneda -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Monto</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                            <input type="number" id="amount" placeholder="0.00" step="0.01"
+                                class="w-full pl-8 pr-4 py-4 bg-slate-50 border-none rounded-xl text-2xl font-bold text-slate-800 focus:ring-2 focus:ring-pink-500 outline-none"
+                                required>
+                        </div>
                     </div>
-                    <input type="hidden" id="transaction-type" value="expense">
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="amount" class="block text-sm font-medium text-gray-600 mb-1">Monto</label>
-                        <input type="number" id="amount" placeholder="0.00" step="0.01" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
-                    </div>
-                    <div>
-                        <label for="currency" class="block text-sm font-medium text-gray-600 mb-1">Moneda</label>
-                        <select id="currency" class="w-full px-4 py-3 text-lg bg-white border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400">
-                            <option value="MXN">Pesos (MXN)</option>
-                            <option value="USD">Dólares (USD)</option>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Moneda</label>
+                        <select id="currency"
+                            class="w-full h-[60px] px-2 bg-slate-50 border-none rounded-xl font-bold text-slate-700 focus:ring-2 focus:ring-pink-500 outline-none">
+                            <option value="MXN">MXN</option>
+                            <option value="USD">USD</option>
                         </select>
                     </div>
                 </div>
 
+                <!-- Descripción -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-2">Método</label>
-                    <div class="grid grid-cols-3 gap-2">
-                        <button type="button" data-payment="Efectivo" class="payment-method-btn flex items-center justify-center gap-2 p-3 text-base border-2 border-gray-200 rounded-xl transition-all">💵 Efectivo</button>
-                        <button type="button" data-payment="Tarjeta" class="payment-method-btn flex items-center justify-center gap-2 p-3 text-base border-2 border-gray-200 rounded-xl transition-all">💳 Tarjeta</button>
-                        <button type="button" data-payment="Transferencia" class="payment-method-btn flex items-center justify-center gap-2 p-3 text-base border-2 border-gray-200 rounded-xl transition-all">📱 Transfer</button>
-                    </div>
-                    <input type="hidden" id="payment-method" required>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">¿Qué compraste?</label>
+                    <input type="text" id="description" placeholder="Ej: Supermercado, Gasolina..."
+                        class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-lg text-slate-800 focus:ring-2 focus:ring-pink-500 outline-none"
+                        required>
                 </div>
-                
-                <div id="card-options" class="hidden space-y-4 pt-4 border-t border-gray-100">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-2">Selecciona la Tarjeta:</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button type="button" data-card-id="banamex_roja" class="card-btn p-3 text-base border-2 border-gray-200 rounded-xl transition-all">Banamex Débito</button>
-                            <button type="button" data-card-id="banamex_joy" class="card-btn p-3 text-base border-2 border-gray-200 rounded-xl transition-all">Banamex Joy</button>
-                            <button type="button" data-card-id="banorte_debito" class="card-btn p-3 text-base border-2 border-gray-200 rounded-xl transition-all">Banorte Débito</button>
-                            <button type="button" data-card-id="banorte_credito" class="card-btn p-3 text-base border-2 border-gray-200 rounded-xl transition-all">Banorte Crédito</button>
-                            <button type="button" data-card-id="bienestar" class="card-btn p-3 text-base border-2 border-gray-200 rounded-xl transition-all">Bienestar</button>
-                            <button type="button" data-card-id="invex" class="card-btn p-3 text-base border-2 border-gray-200 rounded-xl transition-all">Invex Aeropuerto</button>
-                        </div>
-                        <input type="hidden" id="selected-card-info" required>
+
+                <!-- Método de Pago -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Método de Pago</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" data-payment="Efectivo"
+                            class="payment-method-btn py-3 px-2 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-all flex flex-col items-center gap-1">
+                            <span>💵</span> <span class="text-xs">Efectivo</span>
+                        </button>
+                        <button type="button" data-payment="Tarjeta"
+                            class="payment-method-btn py-3 px-2 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-all flex flex-col items-center gap-1">
+                            <span>💳</span> <span class="text-xs">Tarjeta</span>
+                        </button>
+                        <button type="button" data-payment="Transferencia"
+                            class="payment-method-btn py-3 px-2 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-all flex flex-col items-center gap-1">
+                            <span>📱</span> <span class="text-xs">Transfer</span>
+                        </button>
                     </div>
+                    <input type="hidden" id="payment-method">
+                </div>
+
+                <!-- Opciones de Tarjeta (Oculto por defecto) -->
+                <div id="card-options" class="hidden bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Selecciona la
+                            Tarjeta</label>
+                        <div class="grid grid-cols-2 gap-2" id="card-buttons-container">
+                            <!-- Botones de tarjeta generados por JS -->
+                        </div>
+                        <input type="hidden" id="selected-card-info">
+                    </div>
+
                     <div id="installments-section" class="hidden">
-                        <label for="installments-months" class="block text-sm font-medium text-gray-600 mb-1">¿A Meses Sin Intereses?</label>
-                        <select id="installments-months" class="w-full px-4 py-3 text-lg bg-white border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400">
-                            <option value="0">No (Pago único)</option>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Meses Sin Intereses</label>
+                        <select id="installments-months"
+                            class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-700 focus:ring-2 focus:ring-pink-500 outline-none">
+                            <option value="0">Pago Único (Sin MSI)</option>
                             <option value="3">3 Meses</option>
                             <option value="6">6 Meses</option>
                             <option value="9">9 Meses</option>
@@ -191,728 +203,1085 @@
                     </div>
                 </div>
 
+                <!-- Fecha -->
                 <div>
-                    <label for="date" class="block text-sm font-medium text-gray-600 mb-1">Fecha</label>
-                    <input type="date" id="date" class="w-full px-4 py-3 text-lg border-gray-200 border rounded-xl focus:ring-pink-400 focus:border-pink-400" required>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha</label>
+                    <input type="date" id="date"
+                        class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-slate-800 focus:ring-2 focus:ring-pink-500 outline-none">
                 </div>
 
-                <button type="submit" class="w-full bg-pink-500 text-white font-bold text-lg py-4 rounded-xl hover:bg-pink-600 transition-colors shadow-md">
+                <button type="submit"
+                    class="w-full glass-button text-white font-bold text-lg py-4 rounded-xl shadow-lg hover:shadow-xl transition-all active:scale-95">
                     Guardar Movimiento
                 </button>
             </form>
-        </div>
+        </section>
 
-        <!-- Listado de Gastos -->
-        <div class="bg-white p-6 rounded-2xl shadow-lg">
-            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
-                 <button id="toggle-expenses-btn" class="flex items-center gap-2 text-xl font-bold text-gray-700 hover:text-pink-500 transition-colors w-full sm:w-auto">
-                    <span>Movimientos Registrados</span>
-                    <svg id="toggle-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                 </button>
-                 
-                 <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                    <div class="flex items-center gap-2">
-                        <label for="filter-card-select" class="text-sm font-medium text-gray-600 whitespace-nowrap">Filtrar:</label>
-                        <select id="filter-card-select" class="text-sm border-gray-200 border rounded-lg px-2 py-2 bg-white text-gray-600 focus:ring-pink-400 focus:border-pink-400 shadow-sm max-w-[150px]">
-                            <option value="all">Todas las cuentas</option>
-                            <!-- Se llena con JS -->
-                        </select>
+        <!-- Lista de Movimientos -->
+        <section class="glass-panel rounded-3xl p-6">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="toggleListVisibility()">
+                    <h2 class="text-lg font-bold text-slate-700">Últimos Movimientos</h2>
+                    <span id="list-toggle-icon"
+                        class="text-slate-400 text-sm transition-transform duration-300">▼</span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div class="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                        onclick="toggleSelectAllWrapper()">
+                        <input type="checkbox" id="select-all-checkbox"
+                            class="w-4 h-4 text-pink-600 rounded focus:ring-pink-500 cursor-pointer">
+                        <label class="text-xs font-bold text-slate-600 cursor-pointer select-none">Todo</label>
                     </div>
-                    <button id="delete-all-btn" class="text-xs text-red-400 underline hover:text-red-600 whitespace-nowrap">Borrar Todo</button>
-                 </div>
-            </div>
-           
-            <div id="expenses-container" class="transition-all duration-300 ease-in-out">
-                <div id="expenses-list" class="space-y-4"></div>
-                <div id="empty-state" class="hidden text-center py-10">
-                    <p class="text-gray-400 text-lg">No hay movimientos.<br>Sube un Excel o registra uno nuevo.</p>
+
+                    <button id="delete-selected-btn" onclick="deleteSelected()"
+                        class="hidden text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-bold hover:bg-red-200 transition-colors flex items-center gap-1">
+                        <span>🗑️</span> (<span id="selected-count">0</span>)
+                    </button>
+
+                    <select id="filter-date-select"
+                        class="text-sm bg-slate-100 border-none rounded-lg px-2 py-2 text-slate-600 focus:ring-2 focus:ring-pink-500 outline-none max-w-[120px]">
+                        <option value="all">📅 Todo</option>
+                    </select>
+
+                    <select id="filter-card-select"
+                        class="text-sm bg-slate-100 border-none rounded-lg px-2 py-2 text-slate-600 focus:ring-2 focus:ring-pink-500 outline-none max-w-[120px]">
+                        <option value="all">💳 Todo</option>
+                    </select>
                 </div>
             </div>
-        </div>
 
-         <!-- Reportería -->
-        <div class="bg-white p-6 rounded-2xl shadow-lg">
-            <h2 class="text-xl font-bold mb-4 text-gray-700">Generar Reporte</h2>
-            <button id="generate-report-btn" class="w-full bg-teal-500 text-white font-bold text-lg py-4 rounded-xl hover:bg-teal-600 transition-colors shadow-md flex items-center justify-center gap-2">
-                ⬇️ Compartir Excel por WhatsApp
-            </button>
-            <p id="report-feedback" class="text-gray-700 mt-4 hidden p-3 rounded-lg border text-sm"></p>
-        </div>
+            <div id="expenses-list-container"
+                class="transition-all duration-500 ease-in-out overflow-hidden max-h-[2000px] opacity-100">
+                <div id="expenses-list" class="space-y-3">
+                    <!-- Lista generada por JS -->
+                </div>
+                <div id="empty-state" class="hidden text-center py-12">
+                    <div class="text-4xl mb-2">🍃</div>
+                    <p class="text-slate-400">Todo tranquilo por aquí.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Importar / Exportar -->
+        <section id="import-section" class="glass-panel rounded-3xl p-6 border-l-4 border-blue-500">
+            <h2 class="text-lg font-bold text-slate-700 mb-4">Herramientas</h2>
+
+            <div class="grid sm:grid-cols-2 gap-4">
+                <!-- Importar -->
+                <div class="space-y-3">
+                    <p class="text-sm text-slate-500 font-medium">📥 Cargar Estados de Cuenta</p>
+
+                    <!-- Excel -->
+                    <label
+                        class="flex items-center justify-between w-full p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-green-50 hover:border-green-300 transition-all group">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">📊</span>
+                            <span class="text-sm font-bold text-slate-600 group-hover:text-green-600">Subir Excel
+                                (.xlsx)</span>
+                        </div>
+                        <input type="file" id="import-excel-input" accept=".xlsx, .xls" class="hidden">
+                    </label>
+
+                    <!-- PDF -->
+                    <label
+                        class="flex items-center justify-between w-full p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-red-50 hover:border-red-300 transition-all group">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xl">📄</span>
+                            <span class="text-sm font-bold text-slate-600 group-hover:text-red-600">Subir PDF
+                                (Banco)</span>
+                        </div>
+                        <input type="file" id="import-pdf-input" accept=".pdf" class="hidden">
+                    </label>
+
+                    <button id="download-template-btn"
+                        class="w-full text-xs text-blue-500 underline hover:text-blue-700 text-left pl-1">
+                        Descargar Plantilla Excel
+                    </button>
+                </div>
+
+                <!-- Reporte -->
+                <div class="space-y-2">
+                    <p class="text-sm text-slate-500 font-medium">📤 Reportes</p>
+                    <button id="generate-report-btn"
+                        class="w-full p-3 bg-teal-50 border border-teal-200 rounded-xl font-bold text-teal-700 hover:bg-teal-100 transition-all flex items-center justify-center gap-2">
+                        <span>📊</span> Generar Reporte
+                    </button>
+                </div>
+            </div>
+            <p id="feedback-msg" class="text-center text-sm font-bold mt-4 hidden"></p>
+        </section>
 
     </div>
 
+    <!-- Modal de Pago -->
+    <div id="payment-modal"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-3">
+                    💸</div>
+                <h3 class="text-xl font-bold text-slate-800">Registrar Pago</h3>
+                <p class="text-sm text-slate-500">Abonar a: <b id="modal-card-name" class="text-slate-800"></b></p>
+            </div>
+
+            <form id="payment-form" class="space-y-4">
+                <input type="hidden" id="modal-card-id">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Monto a Pagar</label>
+                    <input type="number" id="payment-amount" placeholder="0.00" step="0.01"
+                        class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-2xl font-bold text-slate-800 focus:ring-2 focus:ring-green-500 outline-none"
+                        required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha</label>
+                    <input type="date" id="payment-date"
+                        class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-slate-800 focus:ring-2 focus:ring-green-500 outline-none"
+                        required>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="button" id="close-modal-btn"
+                        class="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
+                    <button type="submit"
+                        class="flex-1 py-3 text-white bg-green-500 hover:bg-green-600 rounded-xl font-bold shadow-lg transition-colors">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Reporte -->
+    <div id="report-modal"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-slate-800">Vista Previa del Reporte</h3>
+                <button id="close-report-btn" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl mb-6">
+                <p class="text-sm text-slate-600 mb-2">Resumen General:</p>
+                <div id="report-summary-content" class="space-y-2 text-sm font-medium"></div>
+            </div>
+
+            <button id="download-excel-btn"
+                class="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2 shadow-lg">
+                <span>📥</span> Descargar Excel para WhatsApp
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Importación (Confirmación) -->
+    <div id="import-preview-modal"
+        class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-6 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Confirmar Importación</h3>
+                    <p class="text-xs text-slate-500">Revisa los datos. Usa <b>+/-</b> para corregir si es Gasto o Pago.
+                    </p>
+                </div>
+                <button id="close-import-btn" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+            </div>
+
+            <div
+                class="bg-blue-50 p-4 rounded-xl mb-4 text-sm text-blue-800 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div class="w-full">
+                    <span class="font-bold">Asignar a Tarjeta:</span>
+                    <select id="import-target-card"
+                        class="mt-1 block w-full bg-white border border-blue-200 text-slate-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <!-- Llenado con JS -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto border border-slate-100 rounded-xl mb-4">
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3">Fecha</th>
+                            <th class="px-4 py-3">Descripción</th>
+                            <th class="px-4 py-3 text-right">Monto</th>
+                            <th class="px-4 py-3 text-center">Tipo</th>
+                            <th class="px-4 py-3 text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="import-preview-list" class="divide-y divide-slate-100">
+                        <!-- Items -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="cancel-import-btn"
+                    class="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
+                <button id="confirm-import-btn"
+                    class="flex-1 py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold shadow-lg transition-colors">Guardar
+                    Movimientos</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- CAMBIO DE VERSIÓN PARA LIMPIAR DATOS CORRUPTOS (V4) ---
-            const STORAGE_KEY = 'gastos_mama_v4'; 
-            const BALANCE_KEY = 'saldos_iniciales_mama_v4';
-            
-            const expenseForm = document.getElementById('expense-form');
-            const editingExpenseIdInput = document.getElementById('editing-expense-id');
-            const descriptionInput = document.getElementById('description');
-            const locationInput = document.getElementById('location');
-            const amountInput = document.getElementById('amount');
-            const currencySelect = document.getElementById('currency');
-            const dateInput = document.getElementById('date');
-            
-            const expensesList = document.getElementById('expenses-list');
-            const expensesContainer = document.getElementById('expenses-container');
-            const emptyState = document.getElementById('empty-state');
-            const toggleExpensesBtn = document.getElementById('toggle-expenses-btn');
-            const toggleIcon = document.getElementById('toggle-icon');
-            const filterCardSelect = document.getElementById('filter-card-select'); 
-            const deleteAllBtn = document.getElementById('delete-all-btn');
+        // --- CONFIGURACIÓN Y DATOS ---
+        const CARDS = {
+            'banamex_roja': { name: 'Banamex Débito', type: 'debit', color: 'red' },
+            'banamex_joy': { name: 'Banamex Joy', type: 'credit', color: 'pink', cutDay: 15, payTermDays: 20 },
+            'banorte_debito': { name: 'Banorte Débito', type: 'debit', color: 'green' },
+            'banorte_credito': { name: 'Banorte Crédito', type: 'credit', color: 'emerald', cutDay: 10, payTermDays: 20 },
+            'bienestar': { name: 'Bienestar', type: 'debit', color: 'gray' },
+            'invex': { name: 'Invex Aeropuerto', type: 'credit', color: 'amber', cutDay: 27, payTermDays: 20 }
+        };
 
-            const summaryList = document.getElementById('summary-list');
-            const generateReportBtn = document.getElementById('generate-report-btn');
-            const reportFeedback = document.getElementById('report-feedback');
-            const currentFilterBox = document.getElementById('current-filter');
-            const currentFilterText = document.getElementById('current-filter-text');
-            const clearFilterBtn = document.getElementById('clear-filter-btn');
-            
-            const paymentModal = document.getElementById('payment-modal');
-            const paymentForm = document.getElementById('payment-form');
-            const modalCardName = document.getElementById('modal-card-name');
-            const modalCardIdInput = document.getElementById('modal-card-id');
-            const paymentAmountInput = document.getElementById('payment-amount');
-            const paymentDateInput = document.getElementById('payment-date');
-            const closeModalBtn = document.getElementById('close-modal-btn');
+        const STORAGE_KEY = 'gastos_mama_v5';
+        const BALANCE_KEY = 'saldos_mama_v5';
 
-            const typeExpenseBtn = document.getElementById('type-expense');
-            const typeIncomeBtn = document.getElementById('type-income');
-            const transactionTypeInput = document.getElementById('transaction-type');
+        let expenses = [];
+        let initialBalances = {};
+        let currentFilter = 'all';
+        let currentDateFilter = 'all';
+        let pendingImportData = [];
+        let isListCollapsed = false;
 
-            const downloadTemplateBtn = document.getElementById('download-template-btn');
-            const importExcelInput = document.getElementById('import-excel-input');
-            const importPdfInput = document.getElementById('import-pdf-input');
-            const importFeedback = document.getElementById('import-feedback');
+        // --- UTILIDADES ---
+        const formatMoney = (amount, currency = 'MXN') => {
+            return new Intl.NumberFormat('es-MX', { style: 'currency', currency: currency }).format(amount);
+        };
 
-            const paymentMethodBtns = document.querySelectorAll('.payment-method-btn');
-            const paymentMethodInput = document.getElementById('payment-method');
-            const cardOptions = document.getElementById('card-options');
-            const cardBtns = document.querySelectorAll('.card-btn');
-            const selectedCardInfoInput = document.getElementById('selected-card-info');
-            const installmentsSection = document.getElementById('installments-section');
-            const installmentsSelect = document.getElementById('installments-months');
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            const [y, m, d] = dateString.split('-');
+            const date = new Date(y, m - 1, d);
+            return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: '2-digit' });
+        };
 
-            const cards = {
-                'banamex_roja': { name: 'Banamex Débito', type: 'debit', style: 'bg-red-50 border-red-400 text-red-700' },
-                'banamex_joy': { name: 'Banamex Joy', type: 'credit', cutDay: 15, payDay: 4, style: 'bg-pink-50 border-pink-400 text-pink-700' }, 
-                'banorte_debito': { name: 'Banorte Débito', type: 'debit', style: 'bg-green-50 border-green-500 text-green-700' },
-                'banorte_credito': { name: 'Banorte Crédito', type: 'credit', cutDay: 10, payTermDays: 20, style: 'bg-green-50 border-green-500 text-green-700' }, 
-                'bienestar': { name: 'Bienestar', type: 'debit', style: 'bg-gray-50 border-gray-400 text-gray-700' },
-                'invex': { name: 'Invex Aeropuerto', type: 'credit', cutDay: 27, payDay: 18, style: 'bg-yellow-50 border-yellow-500 text-yellow-700' } 
-            };
+        const saveData = () => {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
+            localStorage.setItem(BALANCE_KEY, JSON.stringify(initialBalances));
+        };
 
-            // Llenar el selector de filtro
-            Object.keys(cards).forEach(key => {
-                const option = document.createElement('option');
-                option.value = key;
-                option.textContent = cards[key].name;
-                filterCardSelect.appendChild(option);
-            });
-            
-            let expenses = [];
-            let initialBalances = {};
-            let currentFilterCardId = 'all'; 
-            let isExpensesExpanded = true;
-
+        const loadData = () => {
             try {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                if (saved) expenses = JSON.parse(saved);
-                const savedBalances = localStorage.getItem(BALANCE_KEY);
-                if (savedBalances) initialBalances = JSON.parse(savedBalances);
-            } catch (e) {
-                console.log("Iniciando en blanco.");
-            }
+                const e = localStorage.getItem(STORAGE_KEY);
+                const b = localStorage.getItem(BALANCE_KEY);
+                if (e) expenses = JSON.parse(e);
+                if (b) initialBalances = JSON.parse(b);
+            } catch (err) { console.error("Error cargando datos", err); }
+        };
 
-            const formatCurrency = (amount, currency) => {
-                return new Intl.NumberFormat('es-MX', { style: 'currency', currency: currency }).format(amount);
-            };
+        // --- RENDERIZADO ---
 
-            const saveExpenses = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-            const saveBalances = () => localStorage.setItem(BALANCE_KEY, JSON.stringify(initialBalances));
+        const renderSummary = () => {
+            const container = document.getElementById('summary-list');
+            container.innerHTML = '';
 
-            const getSortedExpenses = () => {
-                const list = [...expenses];
-                // Siempre por fecha descendente
-                return list.sort((a, b) => new Date(b.date) - new Date(a.date));
-            };
+            const summary = {};
+            Object.keys(CARDS).forEach(key => {
+                summary[key] = {
+                    ...CARDS[key],
+                    id: key,
+                    totalDebt: 0,
+                    monthlyPayment: 0,
+                    balance: 0
+                };
+            });
 
-            const calculatePaymentDate = (expense) => {
-                if (!expense.cardInfo || expense.cardInfo.type !== 'credit') return 'N/A';
-                if (expense.amount < 0) return 'Abono';
-
-                const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-                const [year, month, day] = expense.date.split('-').map(Number);
-                const { cutDay, payDay, payTermDays } = expense.cardInfo;
-                
-                let cutOffYear = year;
-                let cutOffMonth = month - 1;
-
-                if (day > cutDay) {
-                    cutOffMonth += 1;
-                    if (cutOffMonth > 11) {
-                        cutOffMonth = 0;
-                        cutOffYear += 1;
-                    }
-                }
-                const cutOffDate = new Date(cutOffYear, cutOffMonth, cutDay);
-                let paymentDate;
-
-                if (payDay) {
-                    let paymentMonth = cutOffMonth + 1;
-                    let paymentYear = cutOffYear;
-                    if (paymentMonth > 11) {
-                        paymentMonth = 0;
-                        paymentYear += 1;
-                    }
-                    paymentDate = new Date(paymentYear, paymentMonth, payDay);
-                } else if (payTermDays) {
-                    paymentDate = new Date(cutOffDate);
-                    paymentDate.setDate(cutOffDate.getDate() + payTermDays);
-                }
-
-                if (!paymentDate) return 'Pendiente';
-                return `${paymentDate.getDate()} ${monthNames[paymentDate.getMonth()]}`;
-            };
-
-            const renderSummary = () => {
-                const summary = {};
-                Object.keys(cards).forEach(key => {
-                    summary[`${key}_MXN`] = { total: 0, cardName: cards[key].name, currency: 'MXN', style: cards[key].style, type: cards[key].type, cardId: key };
-                });
-
-                expenses.forEach(expense => {
-                    if (expense.paymentMethod === 'Tarjeta' && expense.cardInfo && expense.cardInfo.name) {
-                        const cardId = Object.keys(cards).find(id => cards[id].name === expense.cardInfo.name);
-                        if (cardId) {
-                            const key = `${cardId}_${expense.currency}`;
-                            if (!summary[key]) {
-                                summary[key] = { total: 0, cardName: cards[cardId].name, currency: expense.currency, style: cards[cardId].style, type: cards[cardId].type, cardId: cardId };
-                            }
-                            
-                            if (cards[cardId].type === 'debit') {
-                                summary[key].total += expense.amount;
+            expenses.forEach(ex => {
+                if (ex.paymentMethod === 'Tarjeta' && ex.cardInfo) {
+                    const cardKey = Object.keys(CARDS).find(k => CARDS[k].name === ex.cardInfo.name);
+                    if (cardKey) {
+                        const card = summary[cardKey];
+                        if (card.type === 'debit') {
+                            card.balance -= ex.amount;
+                        } else {
+                            if (ex.amount < 0) {
+                                card.totalDebt += ex.amount;
                             } else {
-                                // Crédito
-                                if (expense.amount < 0) {
-                                    summary[key].total += expense.amount; 
+                                card.totalDebt += ex.amount;
+                                if (ex.installments > 0) {
+                                    card.monthlyPayment += (ex.amount / ex.installments);
                                 } else {
-                                    let amountToAdd = expense.amount;
-                                    if (expense.amount > 0 && expense.installments > 0) {
-                                        amountToAdd = expense.amount / expense.installments;
-                                    }
-                                    summary[key].total += amountToAdd;
+                                    card.monthlyPayment += ex.amount;
                                 }
                             }
                         }
                     }
-                });
+                }
+            });
 
-                summaryList.innerHTML = '';
-                
-                const orderedKeys = Object.keys(summary).sort((a, b) => {
-                    if (summary[a].type === 'credit' && summary[b].type !== 'credit') return -1;
-                    if (summary[a].type !== 'credit' && summary[b].type === 'credit') return 1;
-                    return 0;
-                });
+            Object.values(summary).forEach(card => {
+                const initial = initialBalances[card.id] || 0;
+                const el = document.createElement('div');
+                el.className = `glass-panel p-4 rounded-2xl border-l-4 ${getBorderColor(card.color)} relative overflow-hidden`;
 
-                orderedKeys.forEach(key => {
-                    const data = summary[key];
-                    const initial = initialBalances[data.cardId] || 0;
-                    
-                    let label, displayAmount, actionButton = '', paymentDueInfo = '', textColorClass = 'text-gray-800';
-                    let bgColor = 'bg-opacity-20';
+                let content = '';
 
-                    if (data.type === 'debit') {
-                        label = 'Saldo Actual Estimado';
-                        // Saldo = Inicial - (Gastos - Ingresos)
-                        // Como Gastos son + y Ingresos son -, 
-                        // Saldo = Inicial - TotalNeto
-                        displayAmount = initial - data.total;
-                        actionButton = `<button class="text-xs text-blue-600 font-bold mt-1 bg-white px-2 py-1 rounded border shadow-sm hover:bg-blue-50 block w-full sm:w-auto text-center" data-set-balance="${data.cardId}">🎯 Ajustar Saldo Inicial</button>`;
-                    } else {
-                        // Crédito: Deuda = DeudaInicial + TotalNeto
-                        displayAmount = initial + data.total;
-
-                        if (displayAmount > 0) {
-                            label = 'TÚ DEBES';
-                            textColorClass = 'text-orange-600';
-                        } else if (displayAmount < 0) {
-                            label = 'SALDO A FAVOR';
-                            textColorClass = 'text-green-600';
-                            displayAmount = Math.abs(displayAmount);
-                        } else {
-                            label = 'EN CEROS';
-                            textColorClass = 'text-gray-500';
-                        }
-                        
-                        const tempExpense = { date: new Date().toISOString().slice(0,10), cardInfo: cards[data.cardId], amount: 100, installments: 0 };
-                        const nextPaymentDate = calculatePaymentDate(tempExpense);
-                        paymentDueInfo = `<p class="text-xs text-gray-500 mt-1">Pago Límite: <b>${nextPaymentDate}</b></p>`;
-
-                        actionButton = `
-                            <div class="flex flex-wrap gap-2 mt-2 justify-end">
-                                <button class="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded border border-blue-200 hover:bg-blue-100" data-set-balance="${data.cardId}">🎯 Deuda Inicial</button>
-                                <button class="text-xs text-green-600 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 hover:bg-green-100" data-pay-card="${data.cardId}">💸 Registrar Pago</button>
-                                <button class="text-xs underline cursor-pointer hover:text-pink-600" data-filter-card="${data.cardId}">Ver detalles</button>
+                if (card.type === 'debit') {
+                    const finalBalance = initial - card.balance;
+                    content = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-slate-700">${card.name}</h3>
+                                <p class="text-xs text-slate-500 uppercase font-bold mt-1">Saldo Disponible</p>
                             </div>
-                        `;
-                    }
-                    
-                    const div = document.createElement('div');
-                    div.className = `flex justify-between items-start p-3 rounded-lg border ${data.style} ${bgColor}`;
-                    div.innerHTML = `
-                        <div class="flex-1">
-                            <p class="font-bold text-sm sm:text-base">${data.cardName} <span class="text-xs font-normal">(${data.currency})</span></p>
-                            <p class="text-xs font-bold uppercase mt-1 ${textColorClass}">${label}</p>
-                            ${data.type === 'credit' ? paymentDueInfo : ''}
-                            ${data.type === 'debit' ? actionButton : ''} 
+                            <button onclick="adjustBalance('${card.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-colors">
+                                ⚙️ Ajustar
+                            </button>
                         </div>
-                        <div class="text-right">
-                            <p class="font-bold text-lg ${textColorClass}">${formatCurrency(displayAmount, data.currency)}</p>
-                            ${data.type === 'credit' ? actionButton : ''}
+                        <p class="text-2xl font-bold text-slate-800 mt-2">${formatMoney(finalBalance)}</p>
+                    `;
+                } else {
+                    const totalDebt = initial + card.totalDebt;
+                    const payments = expenses.filter(e => e.cardInfo && e.cardInfo.name === card.name && e.amount < 0)
+                        .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
+
+                    const finalPayNow = (initial + card.monthlyPayment) - payments;
+                    const finalTotalDebt = totalDebt;
+
+                    const today = new Date();
+                    let cutDate = new Date(today.getFullYear(), today.getMonth(), card.cutDay);
+                    let limitDate = new Date(cutDate);
+                    limitDate.setDate(limitDate.getDate() + card.payTermDays);
+
+                    if (today > limitDate) {
+                        cutDate.setMonth(cutDate.getMonth() + 1);
+                        limitDate = new Date(cutDate);
+                        limitDate.setDate(limitDate.getDate() + card.payTermDays);
+                    }
+
+                    const limitDateStr = limitDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+
+                    content = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-slate-700">${card.name}</h3>
+                                <p class="text-xs text-slate-500 uppercase font-bold mt-1">Pago del Mes</p>
+                            </div>
+                            <div class="flex gap-1">
+                                <button onclick="adjustBalance('${card.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-colors">⚙️</button>
+                                <button onclick="openPaymentModal('${card.id}')" class="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded font-bold transition-colors">Pagar</button>
+                            </div>
+                        </div>
+                        
+                        <p class="text-3xl font-bold text-slate-800 mt-1">${formatMoney(finalPayNow > 0 ? finalPayNow : 0)}</p>
+                        <p class="text-xs text-red-500 font-bold mb-3">Pagar antes del ${limitDateStr}</p>
+                        
+                        <div class="mt-3 pt-3 border-t border-slate-100 flex justify-between items-end">
+                            <div>
+                                <p class="text-xs text-slate-400">Deuda Total</p>
+                                <p class="text-sm font-bold text-orange-600">${formatMoney(finalTotalDebt)}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-slate-400">Corte: Día ${card.cutDay}</p>
+                            </div>
                         </div>
                     `;
-                    summaryList.appendChild(div);
-                });
-            };
-
-            const renderExpenses = () => {
-                expensesList.innerHTML = '';
-                const sorted = getSortedExpenses();
-
-                const filtered = currentFilterCardId === 'all' 
-                    ? sorted 
-                    : sorted.filter(e => e.cardInfo && Object.keys(cards).find(key => cards[key].name === e.cardInfo.name) === currentFilterCardId);
-
-                if (filtered.length === 0) {
-                    emptyState.classList.remove('hidden');
-                    expensesContainer.classList.remove('hidden'); 
-                    return;
                 }
-                emptyState.classList.add('hidden');
+                el.innerHTML = content;
+                container.appendChild(el);
+            });
+        };
 
-                filtered.forEach(expense => {
-                    const el = document.createElement('div');
-                    el.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-start';
-                    
-                    const isIncome = expense.amount < 0;
-                    let subtext = expense.paymentMethod;
-                    if (expense.paymentMethod === 'Tarjeta') {
-                        const msiInfo = expense.installments > 0 ? ` • ${expense.installments} MSI` : '';
-                        subtext = `${expense.cardInfo ? expense.cardInfo.name : 'Tarjeta'} ${msiInfo}`;
-                    }
+        const renderDateFilter = () => {
+            const dateSelect = document.getElementById('filter-date-select');
+            const currentVal = dateSelect.value;
 
-                    const amountColor = isIncome ? 'text-green-600' : 'text-gray-800';
-                    const displayText = isIncome ? (expense.description === 'PAGO A TARJETA' ? 'PAGO A TARJETA' : expense.description) : expense.description;
-                    
-                    // No mostrar signo, solo color
-                    const displayAmount = formatCurrency(Math.abs(expense.amount), expense.currency);
+            // Guardar opciones estáticas
+            dateSelect.innerHTML = '<option value="all">📅 Todo</option>';
 
-                    el.innerHTML = `
+            // Extraer meses únicos
+            const months = new Set();
+            expenses.forEach(ex => {
+                if (ex.date) {
+                    months.add(ex.date.substring(0, 7)); // YYYY-MM
+                }
+            });
+
+            // Ordenar descendente
+            const sortedMonths = Array.from(months).sort().reverse();
+
+            const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+            sortedMonths.forEach(m => {
+                const [year, month] = m.split('-');
+                const label = `${monthNames[parseInt(month) - 1]} ${year}`;
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = label;
+                dateSelect.appendChild(opt);
+            });
+
+            // Restaurar selección si existe
+            if (currentVal && Array.from(dateSelect.options).some(o => o.value === currentVal)) {
+                dateSelect.value = currentVal;
+            } else {
+                dateSelect.value = 'all';
+                currentDateFilter = 'all';
+            }
+        };
+
+        const renderExpenses = () => {
+            const list = document.getElementById('expenses-list');
+            const empty = document.getElementById('empty-state');
+            list.innerHTML = '';
+
+            const filtered = expenses.filter(e => {
+                const cardMatch = currentFilter === 'all' || (e.cardInfo && Object.keys(CARDS).find(k => CARDS[k].name === e.cardInfo.name) === currentFilter);
+                const dateMatch = currentDateFilter === 'all' || (e.date && e.date.startsWith(currentDateFilter));
+                return cardMatch && dateMatch;
+            }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (filtered.length === 0) {
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+            }
+
+            filtered.forEach(ex => {
+                const isIncome = ex.amount < 0;
+                const el = document.createElement('div');
+                el.className = 'bg-white/60 p-4 rounded-xl border border-white/40 shadow-sm flex justify-between items-center hover:bg-white transition-colors group';
+
+                const icon = isIncome ? '💰' : (ex.categoryIcon || '🛒');
+                const amountClass = isIncome ? 'text-green-600' : 'text-slate-800';
+                const sign = isIncome ? '+' : '-';
+
+                let sub = ex.paymentMethod;
+                if (ex.paymentMethod === 'Tarjeta' && ex.cardInfo) {
+                    sub = ex.cardInfo.name;
+                    if (ex.installments > 0) sub += ` • ${ex.installments} MSI`;
+                }
+
+                el.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" class="expense-checkbox w-5 h-5 text-pink-600 rounded focus:ring-pink-500 cursor-pointer" data-id="${ex.id}" onchange="updateDeleteButtonState()">
+                        
+                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg shadow-inner">
+                            ${icon}
+                        </div>
                         <div>
-                            <div class="flex items-baseline gap-2">
-                                <h3 class="font-bold text-gray-800">${displayText}</h3>
-                                <span class="text-xs text-gray-400">${new Date(expense.date).toLocaleDateString('es-MX', {day: 'numeric', month: 'short'})}</span>
-                            </div>
-                            ${expense.location ? `<p class="text-xs text-gray-500 italic">📍 ${expense.location}</p>` : ''}
-                            <p class="text-xs text-gray-500 mt-1 font-medium">${subtext}</p>
+                            <p class="font-bold text-slate-800 text-sm sm:text-base">${ex.description}</p>
+                            <p class="text-xs text-slate-500">${formatDate(ex.date)} • ${sub}</p>
                         </div>
-                        <div class="text-right">
-                            <p class="font-bold ${amountColor} text-lg">${displayAmount}</p>
-                            <div class="flex justify-end gap-3 mt-2">
-                                <button data-id="${expense.id}" class="edit-btn text-blue-400 text-xs underline">Editar</button>
-                                <button data-id="${expense.id}" class="delete-btn text-red-400 text-xs underline">Borrar</button>
-                            </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold ${amountClass}">${sign}${formatMoney(Math.abs(ex.amount), ex.currency)}</p>
+                        <div class="flex gap-2 justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editExpense(${ex.id})" class="text-xs text-blue-400 hover:text-blue-600 font-bold">Editar</button>
+                            <button onclick="deleteExpense(${ex.id})" class="text-xs text-red-300 hover:text-red-500">Borrar</button>
                         </div>
-                    `;
-                    expensesList.appendChild(el);
-                });
-            };
-
-            const refreshUI = () => {
-                renderSummary();
-                renderExpenses();
-                filterCardSelect.value = currentFilterCardId;
-            };
-
-            // --- EVENTOS ---
-            
-            toggleExpensesBtn.addEventListener('click', () => {
-                isExpensesExpanded = !isExpensesExpanded;
-                if (isExpensesExpanded) {
-                    expensesContainer.classList.remove('hidden', 'opacity-0', 'h-0');
-                    toggleIcon.classList.remove('rotate-180');
-                } else {
-                    expensesContainer.classList.add('hidden', 'opacity-0', 'h-0');
-                    toggleIcon.classList.add('rotate-180');
-                }
+                    </div>
+                `;
+                list.appendChild(el);
             });
 
-            filterCardSelect.addEventListener('change', (e) => {
-                currentFilterCardId = e.target.value;
-                refreshUI();
-            });
+            // Reset select all checkbox
+            const selectAll = document.getElementById('select-all-checkbox');
+            if (selectAll) selectAll.checked = false;
+            updateDeleteButtonState();
+        };
 
-            summaryList.addEventListener('click', (e) => {
-                if (e.target.dataset.setBalance) {
-                    const cardId = e.target.dataset.setBalance;
-                    const currentInit = initialBalances[cardId] || 0;
-                    const isCredit = cards[cardId].type === 'credit';
-                    const promptText = isCredit 
-                        ? `Ingresa la DEUDA TOTAL que tenías ANTES de usar esta app en ${cards[cardId].name}:`
-                        : `Ingresa el SALDO INICIAL de ${cards[cardId].name}:`;
-                    
-                    const newVal = prompt(promptText, currentInit);
-                    
-                    if (newVal !== null) {
-                        const floatVal = parseFloat(newVal);
-                        if (!isNaN(floatVal)) {
-                            // CLAVE: Si es crédito, forzamos positivo (Deuda)
-                            initialBalances[cardId] = isCredit ? Math.abs(floatVal) : floatVal;
-                            saveBalances();
-                            refreshUI();
-                        } else {
-                            alert("Por favor ingresa un número válido.");
-                        }
-                    }
-                }
-                if (e.target.dataset.payCard) {
-                    const cardId = e.target.dataset.payCard;
-                    modalCardIdInput.value = cardId;
-                    modalCardName.textContent = cards[cardId].name;
-                    paymentDateInput.value = new Date().toISOString().slice(0,10);
-                    paymentAmountInput.value = '';
-                    paymentModal.classList.remove('hidden');
-                }
-                if (e.target.dataset.filterCard) {
-                    currentFilterCardId = e.target.dataset.filterCard;
-                    refreshUI();
-                    expensesContainer.scrollIntoView({ behavior: 'smooth' });
-                    if (!isExpensesExpanded) toggleExpensesBtn.click();
-                }
-            });
+        const updateUI = () => {
+            renderSummary();
+            renderDateFilter();
+            renderExpenses();
+        };
 
-            closeModalBtn.addEventListener('click', () => {
-                paymentModal.classList.add('hidden');
-            });
+        // --- FUNCIONES DE LISTA (NUEVO) ---
 
-            paymentForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const cardId = modalCardIdInput.value;
-                const amount = parseFloat(paymentAmountInput.value);
-                const date = paymentDateInput.value;
+        window.toggleListVisibility = () => {
+            const container = document.getElementById('expenses-list-container');
+            const icon = document.getElementById('list-toggle-icon');
+            isListCollapsed = !isListCollapsed;
 
-                if (!amount || isNaN(amount)) { alert("Ingresa un monto válido"); return; }
+            if (isListCollapsed) {
+                container.style.maxHeight = '0px';
+                container.style.opacity = '0';
+                icon.style.transform = 'rotate(-90deg)';
+            } else {
+                container.style.maxHeight = '2000px';
+                container.style.opacity = '1';
+                icon.style.transform = 'rotate(0deg)';
+            }
+        };
 
-                const newPayment = {
-                    id: Date.now(),
-                    description: "PAGO A TARJETA",
-                    location: "",
-                    amount: -Math.abs(amount), 
-                    currency: "MXN", 
-                    paymentMethod: "Tarjeta",
-                    cardInfo: cards[cardId],
-                    installments: 0,
-                    date: date
-                };
+        window.toggleSelectAllWrapper = () => {
+            const cb = document.getElementById('select-all-checkbox');
+            cb.checked = !cb.checked;
+            toggleSelectAll(cb);
+        };
 
-                expenses.push(newPayment);
-                saveExpenses();
-                refreshUI();
-                paymentModal.classList.add('hidden');
-            });
+        window.toggleSelectAll = (source) => {
+            // Solo seleccionar los visibles
+            const visibleCheckboxes = document.querySelectorAll('#expenses-list .expense-checkbox');
+            visibleCheckboxes.forEach(cb => cb.checked = source.checked);
+            updateDeleteButtonState();
+        };
 
-            const setTransactionType = (type) => {
-                transactionTypeInput.value = type;
-                if (type === 'expense') {
-                    typeExpenseBtn.classList.add('bg-pink-500', 'text-white', 'border-pink-500');
-                    typeExpenseBtn.classList.remove('bg-white', 'text-gray-600', 'border-gray-200');
-                    typeIncomeBtn.classList.remove('bg-green-500', 'text-white', 'border-green-500');
-                    typeIncomeBtn.classList.add('bg-white', 'text-gray-600', 'border-gray-200');
-                    expenseForm.querySelector('button[type="submit"]').classList.add('bg-pink-500', 'hover:bg-pink-600');
-                    expenseForm.querySelector('button[type="submit"]').classList.remove('bg-green-500', 'hover:bg-green-600');
-                } else {
-                    typeIncomeBtn.classList.add('bg-green-500', 'text-white', 'border-green-500');
-                    typeIncomeBtn.classList.remove('bg-white', 'text-gray-600', 'border-gray-200');
-                    typeExpenseBtn.classList.remove('bg-pink-500', 'text-white', 'border-pink-500');
-                    typeExpenseBtn.classList.add('bg-white', 'text-gray-600', 'border-gray-200');
-                    expenseForm.querySelector('button[type="submit"]').classList.remove('bg-pink-500', 'hover:bg-pink-600');
-                    expenseForm.querySelector('button[type="submit"]').classList.add('bg-green-500', 'hover:bg-green-600');
-                }
-            };
+        window.updateDeleteButtonState = () => {
+            const checkedCount = document.querySelectorAll('.expense-checkbox:checked').length;
+            const btn = document.getElementById('delete-selected-btn');
+            const countSpan = document.getElementById('selected-count');
 
-            typeExpenseBtn.addEventListener('click', () => setTransactionType('expense'));
-            typeIncomeBtn.addEventListener('click', () => setTransactionType('income'));
+            countSpan.textContent = checkedCount;
+            if (checkedCount > 0) {
+                btn.classList.remove('hidden');
+            } else {
+                btn.classList.add('hidden');
+            }
+        };
 
-            paymentMethodBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    paymentMethodBtns.forEach(b => b.classList.remove('bg-pink-500', 'text-white', 'border-pink-500'));
-                    btn.classList.add('bg-pink-500', 'text-white', 'border-pink-500');
-                    const method = btn.dataset.payment;
-                    paymentMethodInput.value = method;
-                    if (method === 'Tarjeta') {
-                        cardOptions.classList.remove('hidden');
-                        selectedCardInfoInput.required = true;
-                    } else {
-                        cardOptions.classList.add('hidden');
-                        installmentsSection.classList.add('hidden');
-                        selectedCardInfoInput.required = false;
-                        cardBtns.forEach(b => {
-                            const style = cards[b.dataset.cardId].style.split(' ');
-                            b.classList.remove(...style);
-                        });
-                        selectedCardInfoInput.value = '';
-                    }
-                });
-            });
+        window.deleteSelected = () => {
+            const checkboxes = document.querySelectorAll('.expense-checkbox:checked');
+            if (checkboxes.length === 0) return;
 
-            cardBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const id = btn.dataset.cardId;
-                    const info = cards[id];
-                    cardBtns.forEach(b => {
-                        const style = cards[b.dataset.cardId].style.split(' ');
-                        b.classList.remove(...style);
-                    });
-                    btn.classList.add(...info.style.split(' '));
-                    selectedCardInfoInput.value = JSON.stringify(info);
-                    if (info.type === 'credit') {
-                        installmentsSection.classList.remove('hidden');
-                    } else {
-                        installmentsSection.classList.add('hidden');
-                        installmentsSelect.value = '0';
-                    }
-                });
-            });
+            if (confirm(`¿Estás segura de borrar ${checkboxes.length} movimientos?`)) {
+                const idsToDelete = Array.from(checkboxes).map(cb => parseFloat(cb.dataset.id));
+                expenses = expenses.filter(e => !idsToDelete.includes(e.id));
+                saveData();
+                updateUI();
+                showFeedback(`¡${idsToDelete.length} movimientos borrados! 🗑️`);
+            }
+        };
 
-            expenseForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                if (!paymentMethodInput.value) { alert('Selecciona un método de pago'); return; }
-                if (paymentMethodInput.value === 'Tarjeta' && !selectedCardInfoInput.value) { alert('Selecciona qué tarjeta usaste'); return; }
-                const editingId = parseFloat(editingExpenseIdInput.value);
-                let finalAmount = parseFloat(amountInput.value);
-                if (transactionTypeInput.value === 'income') {
-                    finalAmount = -Math.abs(finalAmount);
-                } else {
-                    finalAmount = Math.abs(finalAmount);
-                }
-                const newExpense = {
-                    id: editingId || Date.now(),
-                    description: descriptionInput.value,
-                    location: locationInput.value,
-                    amount: finalAmount,
-                    currency: currencySelect.value,
-                    paymentMethod: paymentMethodInput.value,
-                    cardInfo: selectedCardInfoInput.value ? JSON.parse(selectedCardInfoInput.value) : null,
-                    installments: parseInt(installmentsSelect.value) || 0,
-                    date: dateInput.value
-                };
-                if (editingId) {
-                    const index = expenses.findIndex(e => e.id === editingId);
-                    if (index !== -1) expenses[index] = newExpense;
-                } else {
-                    expenses.push(newExpense);
-                }
-                saveExpenses();
-                refreshUI();
-                expenseForm.reset();
-                editingExpenseIdInput.value = '';
-                setTransactionType('expense');
-                paymentMethodBtns.forEach(b => b.classList.remove('bg-pink-500', 'text-white', 'border-pink-500'));
-                cardOptions.classList.add('hidden');
-                dateInput.value = new Date().toISOString().slice(0,10);
-                window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
-            });
-
-            expensesList.addEventListener('click', (e) => {
-                const id = parseFloat(e.target.dataset.id);
-                if (!id) return;
-                if (e.target.classList.contains('delete-btn')) {
-                    if(confirm('¿Eliminar este movimiento?')) {
-                        expenses = expenses.filter(ex => ex.id !== id);
-                        saveExpenses();
-                        refreshUI();
-                    }
-                }
-                if (e.target.classList.contains('edit-btn')) {
-                    const exp = expenses.find(ex => ex.id === id);
-                    if (exp) {
-                        editingExpenseIdInput.value = exp.id;
-                        descriptionInput.value = exp.description;
-                        locationInput.value = exp.location || '';
-                        amountInput.value = Math.abs(exp.amount);
-                        currencySelect.value = exp.currency;
-                        dateInput.value = exp.date;
-                        if (exp.amount < 0) setTransactionType('income');
-                        else setTransactionType('expense');
-                        paymentMethodBtns.forEach(btn => {
-                            if (btn.dataset.payment === exp.paymentMethod) btn.click();
-                        });
-                        if (exp.paymentMethod === 'Tarjeta' && exp.cardInfo) {
-                            const key = Object.keys(cards).find(k => cards[k].name === exp.cardInfo.name);
-                            if (key) {
-                                document.querySelector(`button[data-card-id="${key}"]`).click();
-                                installmentsSelect.value = exp.installments;
-                            }
-                        }
-                        window.scrollTo({top: expenseForm.offsetTop, behavior: 'smooth'});
-                    }
-                }
-            });
-
-            deleteAllBtn.addEventListener('click', () => {
-                if(confirm('¿ESTÁS SEGURA? Esto borrará todos los registros.')) {
-                    expenses = [];
-                    initialBalances = {};
-                    saveExpenses();
-                    saveBalances();
-                    refreshUI();
-                }
-            });
-
-            downloadTemplateBtn.addEventListener('click', () => {
-                const data = [
-                    {"Fecha": "2025-11-18", "Concepto": "Ej: Superama", "Monto": 1500.50, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0},
-                    {"Fecha": "2025-11-15", "Concepto": "Nómina", "Monto": 8000.00, "Moneda": "MXN", "Tipo (Cargo/Abono)": "Abono", "Tarjeta": "Banamex Débito", "MSI": 0}
-                ];
-                const ws = XLSX.utils.json_to_sheet(data);
-                
-                const summaryData = [
-                    {"Tarjeta": "Banamex Joy (Crédito)", "Corte": "Día 15", "Pago Límite": "Día 4 del sig. mes"},
-                    {"Tarjeta": "Banorte Crédito", "Corte": "Día 10", "Pago Límite": "Día 30/31 (20 días después)"},
-                    {"Tarjeta": "Invex Aeropuerto (Crédito)", "Corte": "Día 27", "Pago Límite": "Día 18 del sig. mes"},
-                    {"Tarjeta": "Banamex Débito", "Corte": "N/A", "Pago Límite": "N/A"},
-                    {"Tarjeta": "Banorte Débito", "Corte": "N/A", "Pago Límite": "N/A"},
-                    {"Tarjeta": "Bienestar (Débito)", "Corte": "N/A", "Pago Límite": "N/A"}
-                ];
-                const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Movimientos");
-                XLSX.utils.book_append_sheet(wb, wsSummary, "Resumen_Cuentas");
-                
-                XLSX.writeFile(wb, "Plantilla_Gastos.xlsx");
-            });
-
-            importExcelInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if(!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const data = new Uint8Array(ev.target.result);
-                    const workbook = XLSX.read(data, {type: 'array', cellDates: true});
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(sheet);
-                    let count = 0;
-                    json.forEach(row => {
-                        const desc = row['Concepto'] || row['Descripción'] || row['Description'];
-                        let monto = parseFloat(row['Monto'] || row['Amount'] || row['Importe']);
-                        let fechaRaw = row['Fecha'] || row['Date'];
-                        
-                        if (fechaRaw instanceof Date) {
-                             const year = fechaRaw.getFullYear();
-                             const month = String(fechaRaw.getMonth() + 1).padStart(2, '0');
-                             const day = String(fechaRaw.getDate()).padStart(2, '0');
-                             fechaRaw = `${year}-${month}-${day}`;
-                        }
-
-                        const cardName = row['Tarjeta'] || row['Card'];
-                        const tipo = row['Tipo (Cargo/Abono)'] || row['Tipo'] || '';
-                        
-                        if (desc && !isNaN(monto)) {
-                            const esAbono = tipo.toLowerCase().includes('abono') || tipo.toLowerCase().includes('depósito') || tipo.toLowerCase().includes('ingreso') || tipo.toLowerCase().includes('pago');
-                            if (esAbono) monto = -Math.abs(monto);
-                            let cardInfo = null;
-                            let method = 'Efectivo';
-                            if (cardName) {
-                                method = 'Tarjeta';
-                                const key = Object.keys(cards).find(k => cards[k].name.toLowerCase().includes(cardName.toLowerCase()));
-                                if (key) cardInfo = cards[key];
-                            }
-                            expenses.push({
-                                id: Date.now() + Math.random(),
-                                description: desc,
-                                amount: monto,
-                                currency: row['Moneda'] || 'MXN',
-                                paymentMethod: method,
-                                cardInfo: cardInfo,
-                                installments: row['MSI'] || 0,
-                                date: fechaRaw
-                            });
-                            count++;
-                        }
-                    });
-                    saveExpenses();
-                    refreshUI();
-                    importFeedback.textContent = `Se importaron ${count} movimientos.`;
-                    importFeedback.classList.remove('hidden', 'text-red-500');
-                    importFeedback.classList.add('text-green-600');
-                };
-                reader.readAsArrayBuffer(file);
-            });
-
-            importPdfInput.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if(!file) return;
-                importFeedback.textContent = "Leyendo PDF... (Puede tardar)";
-                importFeedback.classList.remove('hidden');
-                try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-                    let fullText = "";
-                    for(let i=1; i<=pdf.numPages; i++){
-                        const page = await pdf.getPage(i);
-                        const content = await page.getTextContent();
-                        const strings = content.items.map(item => item.str);
-                        fullText += strings.join(" ") + "\n";
-                    }
-                    importFeedback.innerHTML = `<b>PDF Leído.</b><br>Recomendación: Copia los datos a la plantilla Excel.<br><span class="text-xs text-gray-500">Inicio: ${fullText.substring(0, 50)}...</span>`;
-                    importFeedback.classList.add('text-blue-600');
-                } catch (err) {
-                    importFeedback.textContent = "Error leyendo PDF.";
-                    importFeedback.classList.add('text-red-500');
-                }
-            });
-
-            generateReportBtn.addEventListener('click', () => {
-                if (expenses.length === 0) { alert('No hay datos'); return; }
-                const data = expenses.map(e => ({
-                    Fecha: e.date,
-                    Concepto: e.description,
-                    Lugar: e.location,
-                    Monto: Math.abs(e.amount),
-                    Tipo: e.amount < 0 ? 'Abono' : 'Cargo',
-                    Moneda: e.currency,
-                    Metodo: e.paymentMethod,
-                    Tarjeta: e.cardInfo ? e.cardInfo.name : '',
-                    MSI: e.installments > 0 ? e.installments : '',
-                    Pago_Estimado: calculatePaymentDate(e)
-                }));
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Reporte");
-                try {
-                    const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-                    const blob = new Blob([wbout], {type:"application/octet-stream"});
-                    const file = new File([blob], "Reporte_Gastos.xlsx", {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-                    if (navigator.canShare && navigator.canShare({files: [file]})) {
-                        navigator.share({ files: [file], title: 'Reporte', text: 'Adjunto reporte.' });
-                    } else {
-                        XLSX.writeFile(wb, "Reporte_Gastos.xlsx");
-                        alert("Descargado.");
-                    }
-                } catch(e) { XLSX.writeFile(wb, "Reporte_Gastos.xlsx"); }
-            });
-
-            dateInput.value = new Date().toISOString().slice(0,10);
-            setTransactionType('expense');
-            refreshUI();
+        // --- MANEJO DE FORMULARIOS ---
+        const cardButtonsContainer = document.getElementById('card-buttons-container');
+        Object.keys(CARDS).forEach(key => {
+            const card = CARDS[key];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `card-option-btn p-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all`;
+            btn.textContent = card.name;
+            btn.dataset.id = key;
+            btn.onclick = () => selectCard(key, btn);
+            cardButtonsContainer.appendChild(btn);
         });
+
+        const filterSelect = document.getElementById('filter-card-select');
+        Object.keys(CARDS).forEach(key => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = CARDS[key].name;
+            filterSelect.appendChild(opt);
+        });
+
+        const selectCard = (key, btnElement) => {
+            document.querySelectorAll('.card-option-btn').forEach(b => {
+                b.classList.remove('ring-2', 'ring-pink-500', 'bg-pink-50', 'border-pink-200');
+                b.classList.add('border-slate-200');
+            });
+            if (btnElement) {
+                btnElement.classList.remove('border-slate-200');
+                btnElement.classList.add('ring-2', 'ring-pink-500', 'bg-pink-50', 'border-pink-200');
+            }
+
+            document.getElementById('selected-card-info').value = JSON.stringify(CARDS[key]);
+
+            const msiSection = document.getElementById('installments-section');
+            if (CARDS[key].type === 'credit') {
+                msiSection.classList.remove('hidden');
+            } else {
+                msiSection.classList.add('hidden');
+                document.getElementById('installments-months').value = '0';
+            }
+        };
+
+        const typeExpenseBtn = document.getElementById('type-expense');
+        const typeIncomeBtn = document.getElementById('type-income');
+        const transactionTypeInput = document.getElementById('transaction-type');
+
+        typeExpenseBtn.onclick = () => {
+            transactionTypeInput.value = 'expense';
+            typeExpenseBtn.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition-all shadow-sm bg-white text-pink-600';
+            typeIncomeBtn.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition-all text-slate-500 hover:text-slate-700';
+        };
+
+        typeIncomeBtn.onclick = () => {
+            transactionTypeInput.value = 'income';
+            typeIncomeBtn.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition-all shadow-sm bg-white text-green-600';
+            typeExpenseBtn.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition-all text-slate-500 hover:text-slate-700';
+        };
+
+        document.querySelectorAll('.payment-method-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.payment-method-btn').forEach(b => {
+                    b.classList.remove('bg-slate-800', 'text-white', 'border-slate-800');
+                    b.classList.add('border-slate-200', 'text-slate-600');
+                });
+                btn.classList.remove('border-slate-200', 'text-slate-600');
+                btn.classList.add('bg-slate-800', 'text-white', 'border-slate-800');
+
+                const method = btn.dataset.payment;
+                document.getElementById('payment-method').value = method;
+
+                const cardOptions = document.getElementById('card-options');
+                if (method === 'Tarjeta') {
+                    cardOptions.classList.remove('hidden');
+                    document.getElementById('selected-card-info').required = true;
+                } else {
+                    cardOptions.classList.add('hidden');
+                    document.getElementById('selected-card-info').required = false;
+                    document.getElementById('selected-card-info').value = '';
+                    document.querySelectorAll('.card-option-btn').forEach(b => b.classList.remove('ring-2', 'ring-pink-500'));
+                }
+            };
+        });
+
+        // --- EDICIÓN Y GUARDADO ---
+
+        window.editExpense = (id) => {
+            const ex = expenses.find(e => e.id === id);
+            if (!ex) return;
+
+            document.getElementById('editing-expense-id').value = ex.id;
+            document.getElementById('description').value = ex.description;
+            document.getElementById('amount').value = Math.abs(ex.amount);
+            document.getElementById('currency').value = ex.currency;
+            document.getElementById('date').value = ex.date;
+
+            if (ex.amount < 0) {
+                typeIncomeBtn.click();
+            } else {
+                typeExpenseBtn.click();
+            }
+
+            const methodBtn = document.querySelector(`.payment-method-btn[data-payment="${ex.paymentMethod}"]`);
+            if (methodBtn) methodBtn.click();
+
+            if (ex.paymentMethod === 'Tarjeta' && ex.cardInfo) {
+                const cardKey = Object.keys(CARDS).find(k => CARDS[k].name === ex.cardInfo.name);
+                if (cardKey) {
+                    const cardBtn = document.querySelector(`.card-option-btn[data-id="${cardKey}"]`);
+                    if (cardBtn) selectCard(cardKey, cardBtn);
+                }
+                document.getElementById('installments-months').value = ex.installments || 0;
+            }
+
+            const submitBtn = document.querySelector('#expense-form button[type="submit"]');
+            submitBtn.textContent = "Actualizar Movimiento";
+            submitBtn.classList.remove('glass-button');
+            submitBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+
+            let cancelBtn = document.getElementById('cancel-edit-btn');
+            if (!cancelBtn) {
+                cancelBtn = document.createElement('button');
+                cancelBtn.id = 'cancel-edit-btn';
+                cancelBtn.type = 'button';
+                cancelBtn.className = 'w-full py-3 text-slate-500 font-bold rounded-xl hover:bg-slate-100 transition-colors mt-2';
+                cancelBtn.textContent = "Cancelar Edición";
+                cancelBtn.onclick = resetFormState;
+                submitBtn.parentNode.appendChild(cancelBtn);
+            }
+            cancelBtn.classList.remove('hidden');
+
+            document.getElementById('expense-section').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        const resetFormState = () => {
+            document.getElementById('expense-form').reset();
+            document.getElementById('editing-expense-id').value = '';
+
+            const submitBtn = document.querySelector('#expense-form button[type="submit"]');
+            submitBtn.textContent = "Guardar Movimiento";
+            submitBtn.classList.add('glass-button');
+            submitBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+
+            const cancelBtn = document.getElementById('cancel-edit-btn');
+            if (cancelBtn) cancelBtn.classList.add('hidden');
+
+            document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+            typeExpenseBtn.click();
+            document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('bg-slate-800', 'text-white'));
+            document.getElementById('card-options').classList.add('hidden');
+        };
+
+        document.getElementById('expense-form').onsubmit = (e) => {
+            e.preventDefault();
+            const amountVal = parseFloat(document.getElementById('amount').value);
+            const isIncome = transactionTypeInput.value === 'income';
+            const finalAmount = isIncome ? -Math.abs(amountVal) : Math.abs(amountVal);
+            const editingId = document.getElementById('editing-expense-id').value;
+
+            const expenseData = {
+                id: editingId ? parseFloat(editingId) : Date.now(),
+                description: document.getElementById('description').value,
+                amount: finalAmount,
+                currency: document.getElementById('currency').value,
+                paymentMethod: document.getElementById('payment-method').value,
+                cardInfo: document.getElementById('selected-card-info').value ? JSON.parse(document.getElementById('selected-card-info').value) : null,
+                installments: parseInt(document.getElementById('installments-months').value) || 0,
+                date: document.getElementById('date').value
+            };
+
+            if (!expenseData.paymentMethod) { alert("Selecciona un método de pago"); return; }
+            if (expenseData.paymentMethod === 'Tarjeta' && !expenseData.cardInfo) { alert("Selecciona una tarjeta"); return; }
+
+            if (editingId) {
+                const index = expenses.findIndex(e => e.id === parseFloat(editingId));
+                if (index !== -1) {
+                    expenses[index] = expenseData;
+                    showFeedback("¡Movimiento actualizado! ✨");
+                }
+            } else {
+                expenses.push(expenseData);
+                showFeedback("¡Guardado con éxito! 🎉");
+            }
+
+            saveData();
+            updateUI();
+            resetFormState();
+        };
+
+        window.deleteExpense = (id) => {
+            if (confirm("¿Borrar este movimiento?")) {
+                expenses = expenses.filter(e => e.id !== id);
+                saveData();
+                updateUI();
+            }
+        };
+
+        window.adjustBalance = (cardId) => {
+            const card = CARDS[cardId];
+            const current = initialBalances[cardId] || 0;
+            const promptMsg = card.type === 'credit'
+                ? `Define la DEUDA INICIAL de ${card.name} (antes de usar esta app):`
+                : `Define el SALDO INICIAL de ${card.name}:`;
+
+            const val = prompt(promptMsg, current);
+            if (val !== null) {
+                const num = parseFloat(val);
+                if (!isNaN(num)) {
+                    initialBalances[cardId] = Math.abs(num);
+                    saveData();
+                    updateUI();
+                }
+            }
+        };
+
+        window.openPaymentModal = (cardId) => {
+            const modal = document.getElementById('payment-modal');
+            document.getElementById('modal-card-id').value = cardId;
+            document.getElementById('modal-card-name').textContent = CARDS[cardId].name;
+            document.getElementById('payment-date').value = new Date().toISOString().slice(0, 10);
+            modal.classList.remove('hidden');
+        };
+
+        document.getElementById('close-modal-btn').onclick = () => {
+            document.getElementById('payment-modal').classList.add('hidden');
+        };
+
+        document.getElementById('payment-form').onsubmit = (e) => {
+            e.preventDefault();
+            const cardId = document.getElementById('modal-card-id').value;
+            const amount = parseFloat(document.getElementById('payment-amount').value);
+            const date = document.getElementById('payment-date').value;
+
+            if (!amount) return;
+
+            const payment = {
+                id: Date.now(),
+                description: "PAGO A TARJETA",
+                amount: -Math.abs(amount),
+                currency: "MXN",
+                paymentMethod: "Tarjeta",
+                cardInfo: CARDS[cardId],
+                installments: 0,
+                date: date
+            };
+
+            expenses.push(payment);
+            saveData();
+            updateUI();
+            document.getElementById('payment-modal').classList.add('hidden');
+            showFeedback("Pago registrado 💸");
+        };
+
+        // --- IMPORTAR EXCEL ---
+        document.getElementById('import-excel-input').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const data = new Uint8Array(ev.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet);
+
+                pendingImportData = [];
+                json.forEach(row => {
+                    const desc = row['Concepto'] || row['Descripción'] || row['Description'];
+                    let amount = parseFloat(row['Monto'] || row['Amount'] || row['Importe']);
+                    let dateRaw = row['Fecha'] || row['Date'];
+
+                    if (dateRaw instanceof Date) {
+                        dateRaw = dateRaw.toISOString().slice(0, 10);
+                    }
+
+                    const type = row['Tipo'] || '';
+                    if (desc && !isNaN(amount)) {
+                        if (type.toLowerCase().match(/abono|pago|depósito/)) {
+                            amount = -Math.abs(amount);
+                        }
+                        pendingImportData.push({
+                            description: desc,
+                            amount: amount,
+                            date: dateRaw
+                        });
+                    }
+                });
+                openImportPreview();
+            };
+            reader.readAsArrayBuffer(file);
+        };
+
+        // --- IMPORTAR PDF (SMART PARSING) ---
+        document.getElementById('import-pdf-input').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            showFeedback("Analizando PDF... ⏳");
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = "";
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    const strings = content.items.map(item => item.str);
+                    fullText += strings.join(" | ") + "\n";
+                }
+
+                pendingImportData = parseBankText(fullText);
+
+                if (pendingImportData.length > 0) {
+                    openImportPreview();
+                } else {
+                    alert("No se detectaron movimientos claros en el PDF. Intenta copiar y pegar en Excel.");
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("Error leyendo el PDF.");
+            }
+        };
+
+        const parseBankText = (text) => {
+            const lines = text.split('\n');
+            const results = [];
+
+            const dateRegex = /(\d{2}[\/\-]\w{3}|\d{2}\/\d{2}\/\d{2,4})/;
+            const moneyRegex = /(\$?\d{1,3}(,\d{3})*(\.\d{2}))/;
+
+            lines.forEach(line => {
+                const cleanLine = line.replace(/\|/g, ' ').trim();
+                const dateMatch = cleanLine.match(dateRegex);
+                const moneyMatch = cleanLine.match(moneyRegex);
+
+                if (dateMatch && moneyMatch) {
+                    let dateStr = dateMatch[0];
+                    let amountStr = moneyMatch[0].replace(/[$,]/g, '');
+                    let amount = parseFloat(amountStr);
+
+                    let desc = cleanLine.replace(dateMatch[0], '').replace(moneyMatch[0], '').trim();
+                    desc = desc.replace(/\s+/g, ' ').substring(0, 40);
+
+                    let formattedDate = new Date().toISOString().slice(0, 10);
+
+                    const isPayment = /abono|pago|depósito|su pago|recepcion/i.test(cleanLine);
+                    if (isPayment) {
+                        amount = -Math.abs(amount);
+                    }
+
+                    if (desc.length > 3 && !isNaN(amount)) {
+                        results.push({
+                            description: desc,
+                            amount: amount,
+                            date: formattedDate
+                        });
+                    }
+                }
+            });
+            return results;
+        };
+
+        // --- IMPORT PREVIEW MODAL ---
+        const importModal = document.getElementById('import-preview-modal');
+        const importList = document.getElementById('import-preview-list');
+        const targetCardSelect = document.getElementById('import-target-card');
+
+        Object.keys(CARDS).forEach(key => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = CARDS[key].name;
+            targetCardSelect.appendChild(opt);
+        });
+
+        const openImportPreview = () => {
+            renderImportPreview();
+            importModal.classList.remove('hidden');
+        };
+
+        const renderImportPreview = () => {
+            importList.innerHTML = '';
+
+            pendingImportData.forEach((item, index) => {
+                const isIncome = item.amount < 0;
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="px-4 py-2 whitespace-nowrap text-xs">${item.date}</td>
+                    <td class="px-4 py-2 text-xs truncate max-w-[150px]" title="${item.description}">${item.description}</td>
+                    <td class="px-4 py-2 text-right font-bold text-xs ${isIncome ? 'text-green-600' : 'text-slate-700'}">
+                        ${formatMoney(Math.abs(item.amount))}
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        <button onclick="toggleImportItemSign(${index})" class="text-xs font-bold px-2 py-1 rounded border ${isIncome ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-100 text-slate-600 border-slate-200'} hover:scale-105 transition-transform">
+                            ${isIncome ? 'Abono (+)' : 'Cargo (-)'}
+                        </button>
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        <button onclick="removeImportItem(${index})" class="text-red-400 hover:text-red-600 font-bold">&times;</button>
+                    </td>
+                `;
+                importList.appendChild(tr);
+            });
+        };
+
+        window.toggleImportItemSign = (index) => {
+            pendingImportData[index].amount = -pendingImportData[index].amount;
+            renderImportPreview();
+        };
+
+        window.removeImportItem = (index) => {
+            pendingImportData.splice(index, 1);
+            renderImportPreview();
+        };
+
+        document.getElementById('confirm-import-btn').onclick = () => {
+            const targetCardId = targetCardSelect.value;
+            const cardInfo = CARDS[targetCardId];
+
+            let count = 0;
+            pendingImportData.forEach(item => {
+                expenses.push({
+                    id: Date.now() + Math.random(),
+                    description: item.description,
+                    amount: item.amount,
+                    currency: 'MXN',
+                    paymentMethod: 'Tarjeta',
+                    cardInfo: cardInfo,
+                    installments: 0,
+                    date: item.date
+                });
+                count++;
+            });
+
+            saveData();
+            updateUI();
+            importModal.classList.add('hidden');
+            showFeedback(`¡${count} movimientos importados a ${cardInfo.name}!`);
+        };
+
+        document.getElementById('close-import-btn').onclick = () => importModal.classList.add('hidden');
+        document.getElementById('cancel-import-btn').onclick = () => importModal.classList.add('hidden');
+
+
+        document.getElementById('download-template-btn').onclick = () => {
+            const data = [
+                { "Fecha": "2025-11-01", "Concepto": "Ej: Supermercado", "Monto": 1500, "Tipo": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0 },
+                { "Fecha": "2025-11-05", "Concepto": "Pago Tarjeta", "Monto": 500, "Tipo": "Abono", "Tarjeta": "Banamex Joy", "MSI": 0 }
+            ];
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+            XLSX.writeFile(wb, "Plantilla_Gastos.xlsx");
+        };
+
+        // --- REPORTE ---
+        document.getElementById('generate-report-btn').onclick = () => {
+            const modal = document.getElementById('report-modal');
+            const content = document.getElementById('report-summary-content');
+
+            const totalSpent = expenses.filter(e => e.amount > 0).reduce((a, b) => a + b.amount, 0);
+            const totalIncome = expenses.filter(e => e.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
+
+            content.innerHTML = `
+                <div class="flex justify-between"><span>Total Gastado:</span> <b>${formatMoney(totalSpent)}</b></div>
+                <div class="flex justify-between text-green-600"><span>Total Ingresos/Pagos:</span> <b>${formatMoney(totalIncome)}</b></div>
+                <div class="flex justify-between mt-2 pt-2 border-t border-slate-200"><span>Movimientos:</span> <b>${expenses.length}</b></div>
+            `;
+
+            modal.classList.remove('hidden');
+        };
+
+        document.getElementById('close-report-btn').onclick = () => {
+            document.getElementById('report-modal').classList.add('hidden');
+        };
+
+        document.getElementById('download-excel-btn').onclick = () => {
+            const data = expenses.map(e => ({
+                Fecha: e.date,
+                Concepto: e.description,
+                Monto: Math.abs(e.amount),
+                Tipo: e.amount < 0 ? 'Abono' : 'Cargo',
+                Tarjeta: e.cardInfo ? e.cardInfo.name : 'N/A',
+                MSI: e.installments || 0,
+                Pago_Mensual_Real: (e.installments > 0 ? (e.amount / e.installments) : e.amount).toFixed(2)
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte_Detallado");
+            XLSX.writeFile(wb, "Reporte_Finanzas_Mama.xlsx");
+            document.getElementById('report-modal').classList.add('hidden');
+        };
+
+        // --- HELPERS VISUALES ---
+        const getBorderColor = (colorName) => {
+            const map = {
+                'red': 'border-l-red-500',
+                'pink': 'border-l-pink-500',
+                'green': 'border-l-green-500',
+                'emerald': 'border-l-emerald-500',
+                'gray': 'border-l-gray-500',
+                'amber': 'border-l-amber-500'
+            };
+            return map[colorName] || 'border-l-blue-500';
+        };
+
+        const showFeedback = (msg) => {
+            const el = document.getElementById('feedback-msg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            el.className = 'text-center text-sm font-bold mt-4 text-green-600 animate-bounce';
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        };
+
+        document.getElementById('reset-app-btn').onclick = () => {
+            if (confirm("⚠️ ¿Estás segura? Se borrarán todos los datos.")) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(BALANCE_KEY);
+                location.reload();
+            }
+        };
+
+        // Init
+        document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+        loadData();
+        updateUI();
+
+        document.getElementById('filter-card-select').onchange = (e) => {
+            currentFilter = e.target.value;
+            updateUI();
+        };
+
+        document.getElementById('filter-date-select').onchange = (e) => {
+            currentDateFilter = e.target.value;
+            renderExpenses();
+        };
+
     </script>
 </body>
+
 </html>
