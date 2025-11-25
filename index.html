@@ -1127,6 +1127,132 @@
             return results;
         };
 
+        // --- IMPORT PREVIEW MODAL ---
+        const importModal = document.getElementById('import-preview-modal');
+        const importList = document.getElementById('import-preview-list');
+        const targetCardSelect = document.getElementById('import-target-card');
+
+        // Populate target card select
+        Object.keys(CARDS).forEach(key => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = CARDS[key].name;
+            targetCardSelect.appendChild(opt);
+        });
+
+        const openImportPreview = () => {
+            renderImportPreview();
+            importModal.classList.remove('hidden');
+        };
+
+        const renderImportPreview = () => {
+            importList.innerHTML = '';
+            pendingImportData.forEach((item, index) => {
+                const isIncome = item.amount < 0;
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50";
+                tr.innerHTML = `
+                    <td class="px-4 py-2 whitespace-nowrap text-xs">${item.date}</td>
+                    <td class="px-4 py-2 text-xs truncate max-w-[150px]" title="${item.description}">${item.description}</td>
+                    <td class="px-4 py-2 text-right font-bold text-xs ${isIncome ? 'text-green-600' : 'text-slate-700'}">
+                        ${formatMoney(Math.abs(item.amount))}
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        <button onclick="toggleImportItemSign(${index})"
+                            class="text-xs font-bold px-2 py-1 rounded border ${isIncome ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-100 text-slate-600 border-slate-200'} hover:scale-105 transition-transform">
+                            ${isIncome ? 'Abono (+)' : 'Cargo (-)'}
+                        </button>
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        <button onclick="removeImportItem(${index})" class="text-red-400 hover:text-red-600 font-bold">&times;</button>
+                    </td>
+                `;
+                importList.appendChild(tr);
+            });
+        };
+
+        window.toggleImportItemSign = (index) => {
+            pendingImportData[index].amount = -pendingImportData[index].amount;
+            renderImportPreview();
+        };
+
+        window.removeImportItem = (index) => {
+            pendingImportData.splice(index, 1);
+            renderImportPreview();
+        };
+
+        document.getElementById('confirm-import-btn').onclick = () => {
+            const targetCardId = targetCardSelect.value;
+            const cardInfo = CARDS[targetCardId];
+            let count = 0;
+            pendingImportData.forEach(item => {
+                expenses.push({
+                    id: Date.now() + Math.random(),
+                    description: item.description,
+                    amount: item.amount,
+                    currency: 'MXN',
+                    paymentMethod: 'Tarjeta',
+                    cardInfo: cardInfo,
+                    installments: 0,
+                    date: item.date
+                });
+                count++;
+            });
+            saveData();
+            updateUI();
+            importModal.classList.add('hidden');
+            showFeedback(`¡${count} movimientos importados a ${cardInfo.name}!`);
+        };
+
+        document.getElementById('close-import-btn').onclick = () => importModal.classList.add('hidden');
+        document.getElementById('cancel-import-btn').onclick = () => importModal.classList.add('hidden');
+
+        document.getElementById('download-template-btn').onclick = () => {
+            const data = [
+                { "Fecha": "2025-11-01", "Concepto": "Ej: Supermercado", "Monto": 1500, "Tipo": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0 },
+                { "Fecha": "2025-11-05", "Concepto": "Pago Tarjeta", "Monto": 500, "Tipo": "Abono", "Tarjeta": "Banamex Joy", "MSI": 0 }
+            ];
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+            XLSX.writeFile(wb, "Plantilla_Gastos.xlsx");
+        };
+
+        // --- REPORTE ---
+        document.getElementById('generate-report-btn').onclick = () => {
+            const modal = document.getElementById('report-modal');
+            const content = document.getElementById('report-summary-content');
+            const totalSpent = expenses.filter(e => e.amount > 0).reduce((a, b) => a + b.amount, 0);
+            const totalIncome = expenses.filter(e => e.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
+            content.innerHTML = `
+                <div class="flex justify-between"><span>Total Gastado:</span> <b>${formatMoney(totalSpent)}</b></div>
+                <div class="flex justify-between text-green-600"><span>Total Ingresos/Pagos:</span> <b>${formatMoney(totalIncome)}</b></div>
+                <div class="flex justify-between mt-2 pt-2 border-t border-slate-200"><span>Movimientos:</span> <b>${expenses.length}</b></div>
+            `;
+            modal.classList.remove('hidden');
+        };
+
+        document.getElementById('close-report-btn').onclick = () => {
+            document.getElementById('report-modal').classList.add('hidden');
+        };
+
+        document.getElementById('download-excel-btn').onclick = () => {
+            const data = expenses.map(e => ({
+                Fecha: e.date,
+                Concepto: e.description,
+                Monto: Math.abs(e.amount),
+                Tipo: e.amount < 0 ? 'Abono' : 'Cargo',
+                Tarjeta: e.cardInfo ? e.cardInfo.name : 'N/A',
+                MSI: e.installments || 0,
+                Pago_Mensual_Real: (e.installments > 0 ? (e.amount / e.installments) : e.amount).toFixed(2)
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte_Detallado");
+            XLSX.writeFile(wb, "Reporte_Finanzas_Mama.xlsx");
+            document.getElementById('report-modal').classList.add('hidden');
+        };
+
         // --- HELPERS VISUALES ---
         const showFeedback = (msg) => {
             const el = document.getElementById('feedback-msg');
