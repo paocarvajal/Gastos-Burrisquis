@@ -452,10 +452,7 @@
             'banamex_roja': { name: 'Banamex Débito', type: 'debit', color: 'red' },
             'banamex_joy': { name: 'Banamex Joy', type: 'credit', color: 'pink', cutDay: 15, payTermDays: 20 },
             'banorte_debito': { name: 'Banorte Débito', type: 'debit', color: 'green' },
-            'banorte_credito': {
-                name: 'Banorte Crédito', type: 'credit', color: 'emerald', cutDay: 10,
-                payTermDays: 20
-            },
+            'banorte_credito': { name: 'Banorte Crédito', type: 'credit', color: 'emerald', cutDay: 10, payTermDays: 20 },
             'bienestar': { name: 'Bienestar', type: 'debit', color: 'gray' },
             'invex': { name: 'Invex Aeropuerto', type: 'credit', color: 'amber', cutDay: 27, payTermDays: 20 }
         };
@@ -497,6 +494,17 @@
         };
 
         // --- RENDERIZADO ---
+        const getBorderColor = (colorName) => {
+            const map = {
+                'red': 'border-l-red-500',
+                'pink': 'border-l-pink-500',
+                'green': 'border-l-green-500',
+                'emerald': 'border-l-emerald-500',
+                'gray': 'border-l-gray-500',
+                'amber': 'border-l-amber-500'
+            };
+            return map[colorName] || 'border-l-blue-500';
+        };
 
         const renderSummary = () => {
             const container = document.getElementById('summary-list');
@@ -521,9 +529,11 @@
                         if (card.type === 'debit') {
                             card.balance -= ex.amount;
                         } else {
-                            if (ex.amount < 0) { card.totalDebt += ex.amount; } else {
-                                card.totalDebt += ex.amount; if
-                                    (ex.installments > 0) {
+                            if (ex.amount < 0) {
+                                card.totalDebt += ex.amount;
+                            } else {
+                                card.totalDebt += ex.amount;
+                                if (ex.installments > 0) {
                                     card.monthlyPayment += (ex.amount / ex.installments);
                                 } else {
                                     card.monthlyPayment += ex.amount;
@@ -537,8 +547,7 @@
             Object.values(summary).forEach(card => {
                 const initial = initialBalances[card.id] || 0;
                 const el = document.createElement('div');
-                el.className = `glass-panel p-4 rounded-2xl border-l-4 ${getBorderColor(card.color)} relative
-                        overflow-hidden`;
+                el.className = `glass-panel p-4 rounded-2xl border-l-4 ${getBorderColor(card.color)} relative overflow-hidden`;
 
                 let content = '';
 
@@ -556,11 +565,11 @@
                             </button>
                         </div>
                         <p class="text-2xl font-bold text-slate-800 mt-2">${formatMoney(finalBalance)}</p>
-                        `;
+                    `;
                 } else {
                     const totalDebt = initial + card.totalDebt;
-                    const payments = expenses.filter(e => e.cardInfo && e.cardInfo.name === card.name && e.amount <
-                        0).reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
+                    const payments = expenses.filter(e => e.cardInfo && e.cardInfo.name === card.name && e.amount < 0)
+                        .reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
 
                     const finalPayNow = (initial + card.monthlyPayment) - payments;
                     const finalTotalDebt = totalDebt;
@@ -576,38 +585,35 @@
                         limitDate.setDate(limitDate.getDate() + card.payTermDays);
                     }
 
-                    const limitDateStr = limitDate.toLocaleDateString('es-MX', {
-                        day: 'numeric', month: 'short'
-                    });
+                    const limitDateStr = limitDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 
                     content = `
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h3 class="font-bold text-slate-700">${card.name}</h3>
-                                    <p class="text-xs text-slate-500 uppercase font-bold mt-1">Pago del Mes</p>
-                                </div>
-                                <div class="flex gap-1">
-                                    <button onclick="adjustBalance('${card.id}')"
-                                        class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-colors">⚙️</button>
-                                    <button onclick="openPaymentModal('${card.id}')"
-                                        class="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded font-bold transition-colors">Pagar</button>
-                                </div>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-slate-700">${card.name}</h3>
+                                <p class="text-xs text-slate-500 uppercase font-bold mt-1">Pago del Mes</p>
                             </div>
-
-                            <p class="text-3xl font-bold text-slate-800 mt-1">${formatMoney(finalPayNow > 0 ?
-                        finalPayNow : 0)}</p>
-                            <p class="text-xs text-red-500 font-bold mb-3">Pagar antes del ${limitDateStr}</p>
-
-                            <div class="mt-3 pt-3 border-t border-slate-100 flex justify-between items-end">
-                                <div>
-                                    <p class="text-xs text-slate-400">Deuda Total</p>
-                                    <p class="text-sm font-bold text-orange-600">${formatMoney(finalTotalDebt)}</p>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-xs text-slate-400">Corte: Día ${card.cutDay}</p>
-                                </div>
+                            <div class="flex gap-1">
+                                <button onclick="adjustBalance('${card.id}')"
+                                    class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded transition-colors">⚙️</button>
+                                <button onclick="openPaymentModal('${card.id}')"
+                                    class="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-1 rounded font-bold transition-colors">Pagar</button>
                             </div>
-                            `;
+                        </div>
+
+                        <p class="text-3xl font-bold text-slate-800 mt-1">${formatMoney(finalPayNow > 0 ? finalPayNow : 0)}</p>
+                        <p class="text-xs text-red-500 font-bold mb-3">Pagar antes del ${limitDateStr}</p>
+
+                        <div class="mt-3 pt-3 border-t border-slate-100 flex justify-between items-end">
+                            <div>
+                                <p class="text-xs text-slate-400">Deuda Total</p>
+                                <p class="text-sm font-bold text-orange-600">${formatMoney(finalTotalDebt)}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-slate-400">Corte: Día ${card.cutDay}</p>
+                            </div>
+                        </div>
+                    `;
                 }
                 el.innerHTML = content;
                 container.appendChild(el);
@@ -616,7 +622,6 @@
 
         const renderDateFilter = () => {
             const dateSelect = document.getElementById('filter-date-select');
-            const currentVal = dateSelect.value;
 
             // Guardar opciones estáticas
             dateSelect.innerHTML = '<option value="all">📅 Todo</option>';
@@ -631,463 +636,575 @@
 
             // Ordenar descendente
             const sortedMonths = Array.from(months).sort().reverse();
-
-            const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct",
-                "Nov", "Dic"];
+            const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
             sortedMonths.forEach(m => {
                 const [year, month] = m.split('-');
-                const submitBtn = document.querySelector('#expense-form button[type="submit"]');
-                submitBtn.textContent = "Guardar Movimiento";
-                submitBtn.classList.add('glass-button');
-                submitBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                const label = `${monthNames[parseInt(month) - 1]} ${year}`;
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = label;
+                dateSelect.appendChild(opt);
+            });
 
-                const cancelBtn = document.getElementById('cancel-edit-btn');
-                if (cancelBtn) cancelBtn.classList.add('hidden');
+            if (sortedMonths.includes(currentDateFilter)) {
+                dateSelect.value = currentDateFilter;
+            } else {
+                dateSelect.value = 'all';
+                currentDateFilter = 'all';
+            }
+        };
 
-                document.getElementById('date').value = new Date().toISOString().slice(0, 10);
-                typeExpenseBtn.click();
-                document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('bg-slate-800', 'text-white'));
-                document.getElementById('card-options').classList.add('hidden');
-            };
+        const renderExpenses = () => {
+            const list = document.getElementById('expenses-list');
+            const empty = document.getElementById('empty-state');
+            list.innerHTML = '';
 
-            document.getElementById('expense-form').onsubmit = (e) => {
-                e.preventDefault();
-                const amountVal = parseFloat(document.getElementById('amount').value);
-                const isIncome = transactionTypeInput.value === 'income';
-                const finalAmount = isIncome ? -Math.abs(amountVal) : Math.abs(amountVal);
-                const editingId = document.getElementById('editing-expense-id').value;
+            const filtered = expenses.filter(e => {
+                const cardMatch = currentFilter === 'all' || (e.cardInfo && Object.keys(CARDS).find(k => CARDS[k].name === e.cardInfo.name) === currentFilter);
+                const dateMatch = currentDateFilter === 'all' || (e.date && e.date.startsWith(currentDateFilter));
+                return cardMatch && dateMatch;
+            }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-                const expenseData = {
-                    id: editingId ? parseFloat(editingId) : Date.now(),
-                    description: document.getElementById('description').value,
-                    amount: finalAmount,
-                    currency: document.getElementById('currency').value,
-                    paymentMethod: document.getElementById('payment-method').value,
-                    cardInfo: document.getElementById('selected-card-info').value ? JSON.parse(document.getElementById('selected-card-info').value) : null,
-                    installments: parseInt(document.getElementById('installments-months').value) || 0,
-                    date: document.getElementById('date').value
-                };
+            if (filtered.length === 0) {
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+            }
 
-                if (!expenseData.paymentMethod) { alert("Selecciona un método de pago"); return; }
-                if (expenseData.paymentMethod === 'Tarjeta' && !expenseData.cardInfo) {
-                    alert("Selecciona una tarjeta"); return;
+            filtered.forEach(ex => {
+                const isIncome = ex.amount < 0;
+                const el = document.createElement('div');
+                el.className = 'bg-white/60 p-4 rounded-xl border border-white/40 shadow-sm flex justify-between items-center hover:bg-white transition-colors group';
+                const icon = isIncome ? '💰' : (ex.categoryIcon || '🛒');
+                const amountClass = isIncome ? 'text-green-600' : 'text-slate-800';
+                const sign = isIncome ? '+' : '-';
+                let sub = ex.paymentMethod;
+                if (ex.paymentMethod === 'Tarjeta' && ex.cardInfo) {
+                    sub = ex.cardInfo.name;
+                    if (ex.installments > 0) sub += ` • ${ex.installments} MSI`;
                 }
 
-                if (editingId) {
-                    const index = expenses.findIndex(e => e.id === parseFloat(editingId));
-                    if (index !== -1) {
-                        expenses[index] = expenseData;
-                        showFeedback("¡Movimiento actualizado! ✨");
-                    }
-                } else {
-                    expenses.push(expenseData);
-                    showFeedback("¡Guardado con éxito! 🎉");
-                }
+                el.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" class="expense-checkbox w-5 h-5 text-pink-600 rounded focus:ring-pink-500 cursor-pointer" data-id="${ex.id}" onchange="updateDeleteButtonState()">
+                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-lg shadow-inner">
+                            ${icon}
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-800 text-sm sm:text-base">${ex.description}</p>
+                            <p class="text-xs text-slate-500">${formatDate(ex.date)} • ${sub}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold ${amountClass}">${sign}${formatMoney(Math.abs(ex.amount), ex.currency)}</p>
+                        <div class="flex gap-2 justify-end mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editExpense(${ex.id})" class="text-xs text-blue-400 hover:text-blue-600 font-bold">Editar</button>
+                            <button onclick="deleteExpense(${ex.id})" class="text-xs text-red-300 hover:text-red-500">Borrar</button>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(el);
+            });
 
+            const selectAll = document.getElementById('select-all-checkbox');
+            if (selectAll) selectAll.checked = false;
+            updateDeleteButtonState();
+        };
+
+        const updateUI = () => {
+            renderSummary();
+            renderDateFilter();
+            renderExpenses();
+        };
+
+        // --- INTERACCIÓN UI ---
+        window.toggleListVisibility = () => {
+            const container = document.getElementById('expenses-list-container');
+            const icon = document.getElementById('list-toggle-icon');
+            isListCollapsed = !isListCollapsed;
+
+            if (isListCollapsed) {
+                container.style.maxHeight = '0px';
+                container.style.opacity = '0';
+                icon.style.transform = 'rotate(-90deg)';
+            } else {
+                container.style.maxHeight = '2000px';
+                container.style.opacity = '1';
+                icon.style.transform = 'rotate(0deg)';
+            }
+        };
+
+        window.toggleSelectAllWrapper = () => {
+            const cb = document.getElementById('select-all-checkbox');
+            cb.checked = !cb.checked;
+            toggleSelectAll(cb);
+        };
+
+        window.toggleSelectAll = (source) => {
+            const visibleCheckboxes = document.querySelectorAll('#expenses-list .expense-checkbox');
+            visibleCheckboxes.forEach(cb => cb.checked = source.checked);
+            updateDeleteButtonState();
+        };
+
+        window.updateDeleteButtonState = () => {
+            const checkedCount = document.querySelectorAll('.expense-checkbox:checked').length;
+            const btn = document.getElementById('delete-selected-btn');
+            const countSpan = document.getElementById('selected-count');
+            countSpan.textContent = checkedCount;
+            if (checkedCount > 0) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+        };
+
+        window.deleteSelected = () => {
+            const checkboxes = document.querySelectorAll('.expense-checkbox:checked');
+            if (checkboxes.length === 0) return;
+            if (confirm(`¿Estás segura de borrar ${checkboxes.length} movimientos?`)) {
+                const idsToDelete = Array.from(checkboxes).map(cb => parseFloat(cb.dataset.id));
+                expenses = expenses.filter(e => !idsToDelete.includes(e.id));
                 saveData();
                 updateUI();
-                resetFormState();
-            };
+                showFeedback(`¡${idsToDelete.length} movimientos borrados! 🗑️`);
+            }
+        };
 
-            window.deleteExpense = (id) => {
-                if (confirm("¿Borrar este movimiento?")) {
-                    expenses = expenses.filter(e => e.id !== id);
+        window.adjustBalance = (cardId) => {
+            const card = CARDS[cardId];
+            const current = initialBalances[cardId] || 0;
+            const promptMsg = card.type === 'credit'
+                ? `Define la DEUDA INICIAL de ${card.name} (antes de usar esta app): `
+                : `Define el SALDO INICIAL de ${card.name}: `;
+
+            const val = prompt(promptMsg, current);
+            if (val !== null) {
+                const num = parseFloat(val);
+                if (!isNaN(num)) {
+                    initialBalances[cardId] = Math.abs(num);
                     saveData();
                     updateUI();
                 }
-            };
+            }
+        };
 
-            window.adjustBalance = (cardId) => {
-                const card = CARDS[cardId];
-                const current = initialBalances[cardId] || 0;
-                const promptMsg = card.type === 'credit'
-                    ? `Define la DEUDA INICIAL de ${card.name} (antes de usar esta app): `
-                    : `Define el SALDO INICIAL de ${card.name}: `;
+        window.openPaymentModal = (cardId) => {
+            const modal = document.getElementById('payment-modal');
+            document.getElementById('modal-card-id').value = cardId;
+            document.getElementById('modal-card-name').textContent = CARDS[cardId].name;
+            document.getElementById('payment-date').value = new Date().toISOString().slice(0, 10);
+            modal.classList.remove('hidden');
+        };
 
-                const val = prompt(promptMsg, current);
-                if (val !== null) {
-                    const num = parseFloat(val);
-                    if (!isNaN(num)) {
-                        initialBalances[cardId] = Math.abs(num);
-                        saveData();
-                        updateUI();
-                    }
-                }
-            };
-
-            window.openPaymentModal = (cardId) => {
-                const modal = document.getElementById('payment-modal');
-                document.getElementById('modal-card-id').value = cardId;
-                document.getElementById('modal-card-name').textContent = CARDS[cardId].name;
-                document.getElementById('payment-date').value = new Date().toISOString().slice(0, 10);
-                modal.classList.remove('hidden');
-            };
-
-            document.getElementById('close-modal-btn').onclick = () => {
-                document.getElementById('payment-modal').classList.add('hidden');
-            };
-
-            document.getElementById('payment-form').onsubmit = (e) => {
-                e.preventDefault();
-                const cardId = document.getElementById('modal-card-id').value;
-                const amount = parseFloat(document.getElementById('payment-amount').value);
-                const date = document.getElementById('payment-date').value;
-
-                if (!amount) return;
-
-                const payment = {
-                    id: Date.now(),
-                    description: "PAGO A TARJETA",
-                    amount: -Math.abs(amount),
-                    currency: "MXN",
-                    paymentMethod: "Tarjeta",
-                    cardInfo: CARDS[cardId],
-                    installments: 0,
-                    date: date
-                };
-
-                expenses.push(payment);
+        window.deleteExpense = (id) => {
+            if (confirm("¿Borrar este movimiento?")) {
+                expenses = expenses.filter(e => e.id !== id);
                 saveData();
                 updateUI();
-                document.getElementById('payment-modal').classList.add('hidden');
-                showFeedback("Pago registrado 💸");
-            };
+            }
+        };
 
-            // --- IMPORTAR EXCEL ---
-            document.getElementById('import-excel-input').onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const data = new Uint8Array(ev.target.result);
-                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const json = XLSX.utils.sheet_to_json(sheet);
+        // --- EDICIÓN Y FORMULARIO ---
+        const resetFormState = () => {
+            document.getElementById('expense-form').reset();
+            document.getElementById('editing-expense-id').value = '';
 
-                    pendingImportData = [];
-                    json.forEach(row => {
-                        const desc = row['Concepto'] || row['Descripción'] || row['Description'];
-                        let amount = parseFloat(row['Monto'] || row['Amount'] || row['Importe']);
-                        let dateRaw = row['Fecha'] || row['Date'];
+            const submitBtn = document.querySelector('#expense-form button[type="submit"]');
+            submitBtn.textContent = "Guardar Movimiento";
+            submitBtn.classList.add('glass-button');
+            submitBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
 
-                        if (dateRaw instanceof Date) {
-                            dateRaw = dateRaw.toISOString().slice(0, 10);
-                        }
+            const cancelBtn = document.getElementById('cancel-edit-btn');
+            if (cancelBtn) cancelBtn.classList.add('hidden');
 
-                        const type = row['Tipo'] || '';
-                        if (desc && !isNaN(amount)) {
-                            if (type.toLowerCase().match(/abono|pago|depósito/)) {
-                                amount = -Math.abs(amount);
-                            }
-                            pendingImportData.push({
-                                description: desc,
-                                amount: amount,
-                                date: dateRaw
-                            });
-                        }
-                    });
-                    openImportPreview();
-                };
-                reader.readAsArrayBuffer(file);
-            };
+            document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+            typeExpenseBtn.click();
+            document.querySelectorAll('.payment-method-btn').forEach(b => b.classList.remove('bg-slate-800', 'text-white'));
+            document.getElementById('card-options').classList.add('hidden');
+        };
 
-            // --- IMPORTAR PDF (SMART PARSING) ---
-            document.getElementById('import-pdf-input').onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
+        window.editExpense = (id) => {
+            const ex = expenses.find(e => e.id === id);
+            if (!ex) return;
 
-                showFeedback("Analizando PDF... ⏳");
+            document.getElementById('editing-expense-id').value = ex.id;
+            document.getElementById('description').value = ex.description;
+            document.getElementById('amount').value = Math.abs(ex.amount);
+            document.getElementById('currency').value = ex.currency;
+            document.getElementById('date').value = ex.date;
 
-                try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                    let fullText = "";
+            if (ex.amount < 0) { typeIncomeBtn.click(); } else { typeExpenseBtn.click(); }
 
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const content = await page.getTextContent();
-                        const strings = content.items.map(item => item.str);
-                        fullText += strings.join(" | ") + "\n";
-                    }
+            const methodBtn = document.querySelector(`.payment-method-btn[data-payment="${ex.paymentMethod}"]`);
+            if (methodBtn) methodBtn.click();
 
-                    pendingImportData = parseBankText(fullText);
+            if (ex.paymentMethod === 'Tarjeta' && ex.cardInfo) {
+                const cardKey = Object.keys(CARDS).find(k => CARDS[k].name === ex.cardInfo.name);
+                if (cardKey) {
+                    const cardBtn = document.querySelector(`.card-option-btn[data-id="${cardKey}"]`);
+                    if (cardBtn) selectCard(cardKey, cardBtn);
+                }
+                document.getElementById('installments-months').value = ex.installments || 0;
+            }
 
-                    if (pendingImportData.length > 0) {
-                        openImportPreview();
-                    } else {
-                        alert("No se detectaron movimientos claros en el PDF. Intenta copiar y pegar en Excel.");
-                    }
+            const submitBtn = document.querySelector('#expense-form button[type="submit"]');
+            submitBtn.textContent = "Actualizar Movimiento";
+            submitBtn.classList.remove('glass-button');
+            submitBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
 
-                } catch (err) {
-                    console.error(err);
-                    alert("Error leyendo el PDF.");
+            let cancelBtn = document.getElementById('cancel-edit-btn');
+            if (!cancelBtn) {
+                cancelBtn = document.createElement('button');
+                cancelBtn.id = 'cancel-edit-btn';
+                cancelBtn.type = 'button';
+                cancelBtn.className = 'w-full py-3 text-slate-500 font-bold rounded-xl hover:bg-slate-100 transition-colors mt-2';
+                cancelBtn.textContent = "Cancelar Edición";
+                cancelBtn.onclick = resetFormState;
+                submitBtn.parentNode.appendChild(cancelBtn);
+            }
+            cancelBtn.classList.remove('hidden');
+
+            document.getElementById('expense-section').scrollIntoView({ behavior: 'smooth' });
+        };
+
+        // --- EVENT LISTENERS ---
+        const cardButtonsContainer = document.getElementById('card-buttons-container');
+        Object.keys(CARDS).forEach(key => {
+            const card = CARDS[key];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `card-option-btn p-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all`;
+            btn.textContent = card.name;
+            btn.dataset.id = key;
+            btn.onclick = () => selectCard(key, btn);
+            cardButtonsContainer.appendChild(btn);
+        });
+
+        const filterSelect = document.getElementById('filter-card-select');
+        Object.keys(CARDS).forEach(key => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = CARDS[key].name;
+            filterSelect.appendChild(opt);
+        });
+
+        const selectCard = (key, btnElement) => {
+            document.querySelectorAll('.card-option-btn').forEach(b => {
+                b.classList.remove('ring-2', 'ring-pink-500', 'bg-pink-50', 'border-pink-200');
+                b.classList.add('border-slate-200');
+            });
+            if (btnElement) {
+                btnElement.classList.remove('border-slate-200');
+                btnElement.classList.add('ring-2', 'ring-pink-500', 'bg-pink-50', 'border-pink-200');
+            }
+
+            document.getElementById('selected-card-info').value = JSON.stringify(CARDS[key]);
+
+            const msiSection = document.getElementById('installments-section');
+            if (CARDS[key].type === 'credit') {
+                msiSection.classList.remove('hidden');
+            } else {
+                msiSection.classList.add('hidden');
+                document.getElementById('installments-months').value = '0';
+            }
+        };
+
+        const typeExpenseBtn = document.getElementById('type-expense');
+        const typeIncomeBtn = document.getElementById('type-income');
+        const transactionTypeInput = document.getElementById('transaction-type');
+
+        typeExpenseBtn.onclick = () => {
+            transactionTypeInput.value = 'expense';
+            typeExpenseBtn.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition-all shadow-sm bg-white text-pink-600';
+            typeIncomeBtn.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition-all text-slate-500 hover:text-slate-700';
+        };
+
+        typeIncomeBtn.onclick = () => {
+            transactionTypeInput.value = 'income';
+            typeIncomeBtn.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition-all shadow-sm bg-white text-green-600';
+            typeExpenseBtn.className = 'flex-1 py-3 rounded-lg font-bold text-sm transition-all text-slate-500 hover:text-slate-700';
+        };
+
+        document.querySelectorAll('.payment-method-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.payment-method-btn').forEach(b => {
+                    b.classList.remove('bg-slate-800', 'text-white', 'border-slate-800');
+                    b.classList.add('border-slate-200', 'text-slate-600');
+                });
+                btn.classList.remove('border-slate-200', 'text-slate-600');
+                btn.classList.add('bg-slate-800', 'text-white', 'border-slate-800');
+
+                const method = btn.dataset.payment;
+                document.getElementById('payment-method').value = method;
+
+                const cardOptions = document.getElementById('card-options');
+                if (method === 'Tarjeta') {
+                    cardOptions.classList.remove('hidden');
+                    document.getElementById('selected-card-info').required = true;
+                } else {
+                    cardOptions.classList.add('hidden');
+                    document.getElementById('selected-card-info').required = false;
+                    document.getElementById('selected-card-info').value = '';
+                    document.querySelectorAll('.card-option-btn').forEach(b => b.classList.remove('ring-2', 'ring-pink-500'));
                 }
             };
+        });
 
-            const parseBankText = (text) => {
-                const lines = text.split('\n');
-                const results = [];
+        document.getElementById('expense-form').onsubmit = (e) => {
+            e.preventDefault();
+            const amountVal = parseFloat(document.getElementById('amount').value);
+            const isIncome = transactionTypeInput.value === 'income';
+            const finalAmount = isIncome ? -Math.abs(amountVal) : Math.abs(amountVal);
+            const editingId = document.getElementById('editing-expense-id').value;
 
-                const dateRegex = /(\d{2}[\/\-]\w{3}|\d{2}\/\d{2}\/\d{2,4})/;
-                const moneyRegex = /(\$?\d{1,3}(,\d{3})*(\.\d{2}))/;
+            const expenseData = {
+                id: editingId ? parseFloat(editingId) : Date.now(),
+                description: document.getElementById('description').value,
+                amount: finalAmount,
+                currency: document.getElementById('currency').value,
+                paymentMethod: document.getElementById('payment-method').value,
+                cardInfo: document.getElementById('selected-card-info').value ? JSON.parse(document.getElementById('selected-card-info').value) : null,
+                installments: parseInt(document.getElementById('installments-months').value) || 0,
+                date: document.getElementById('date').value
+            };
 
-                lines.forEach(line => {
-                    const cleanLine = line.replace(/\|/g, ' ').trim();
-                    const dateMatch = cleanLine.match(dateRegex);
-                    const moneyMatch = cleanLine.match(moneyRegex);
+            if (!expenseData.paymentMethod) { alert("Selecciona un método de pago"); return; }
+            if (expenseData.paymentMethod === 'Tarjeta' && !expenseData.cardInfo) {
+                alert("Selecciona una tarjeta"); return;
+            }
 
-                    if (dateMatch && moneyMatch) {
-                        let dateStr = dateMatch[0];
-                        let amountStr = moneyMatch[0].replace(/[$,]/g, '');
-                        let amount = parseFloat(amountStr);
+            if (editingId) {
+                const index = expenses.findIndex(e => e.id === parseFloat(editingId));
+                if (index !== -1) {
+                    expenses[index] = expenseData;
+                    showFeedback("¡Movimiento actualizado! ✨");
+                }
+            } else {
+                expenses.push(expenseData);
+                showFeedback("¡Guardado con éxito! 🎉");
+            }
 
-                        let desc = cleanLine.replace(dateMatch[0], '').replace(moneyMatch[0], '').trim();
-                        desc = desc.replace(/\s+/g, ' ').substring(0, 40);
+            saveData();
+            updateUI();
+            resetFormState();
+        };
 
-                        let formattedDate = new Date().toISOString().slice(0, 10);
+        document.getElementById('close-modal-btn').onclick = () => {
+            document.getElementById('payment-modal').classList.add('hidden');
+        };
 
-                        const isPayment = /abono|pago|depósito|su pago|recepcion/i.test(cleanLine);
-                        if (isPayment) {
+        document.getElementById('payment-form').onsubmit = (e) => {
+            e.preventDefault();
+            const cardId = document.getElementById('modal-card-id').value;
+            const amount = parseFloat(document.getElementById('payment-amount').value);
+            const date = document.getElementById('payment-date').value;
+
+            if (!amount) return;
+
+            const payment = {
+                id: Date.now(),
+                description: "PAGO A TARJETA",
+                amount: -Math.abs(amount),
+                currency: "MXN",
+                paymentMethod: "Tarjeta",
+                cardInfo: CARDS[cardId],
+                installments: 0,
+                date: date
+            };
+
+            expenses.push(payment);
+            saveData();
+            updateUI();
+            document.getElementById('payment-modal').classList.add('hidden');
+            showFeedback("Pago registrado 💸");
+        };
+
+        // --- IMPORTAR EXCEL ---
+        document.getElementById('import-excel-input').onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const data = new Uint8Array(ev.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet);
+
+                pendingImportData = [];
+                json.forEach(row => {
+                    const desc = row['Concepto'] || row['Descripción'] || row['Description'];
+                    let amount = parseFloat(row['Monto'] || row['Amount'] || row['Importe']);
+                    let dateRaw = row['Fecha'] || row['Date'];
+
+                    if (dateRaw instanceof Date) {
+                        dateRaw = dateRaw.toISOString().slice(0, 10);
+                    }
+
+                    const type = row['Tipo'] || '';
+                    if (desc && !isNaN(amount)) {
+                        if (type.toLowerCase().match(/abono|pago|depósito/)) {
                             amount = -Math.abs(amount);
                         }
-
-                        if (desc.length > 3 && !isNaN(amount)) {
-                            results.push({
-                                description: desc,
-                                amount: amount,
-                                date: formattedDate
-                            });
-                        }
+                        pendingImportData.push({
+                            description: desc,
+                            amount: amount,
+                            date: dateRaw
+                        });
                     }
                 });
-                return results;
+                openImportPreview();
             };
+            reader.readAsArrayBuffer(file);
+        };
 
-            // --- IMPORT PREVIEW MODAL ---
-            const importModal = document.getElementById('import-preview-modal');
-            const importList = document.getElementById('import-preview-list');
-            const targetCardSelect = document.getElementById('import-target-card');
+        // --- IMPORTAR PDF (SMART PARSING) ---
+        document.getElementById('import-pdf-input').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
 
-            Object.keys(CARDS).forEach(key => {
-                const opt = document.createElement('option');
-                opt.value = key;
-                opt.textContent = CARDS[key].name;
-                targetCardSelect.appendChild(opt);
-            });
+            showFeedback("Analizando PDF... ⏳");
 
-            const openImportPreview = () => {
-                renderImportPreview();
-                importModal.classList.remove('hidden');
-            };
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = "";
 
-            const renderImportPreview = () => {
-                importList.innerHTML = '';
-
-                pendingImportData.forEach((item, index) => {
-                    const isIncome = item.amount < 0;
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-slate-50";
-                    tr.innerHTML = `
-                < td class="px-4 py-2 whitespace-nowrap text-xs" > ${item.date}</td >
-                    <td class="px-4 py-2 text-xs truncate max-w-[150px]" title="${item.description}">${item.description}</td>
-                    <td class="px-4 py-2 text-right font-bold text-xs ${isIncome ? 'text-green-600' : 'text-slate-700'}">
-                        ${formatMoney(Math.abs(item.amount))}
-                    </td>
-                    <td class="px-4 py-2 text-center">
-                        <button onclick="toggleImportItemSign(${index})"
-                            class="text-xs font-bold px-2 py-1 rounded border ${isIncome ? 'bg-green-100 text-green-700 border-green-200' : 'bg-slate-100 text-slate-600 border-slate-200'} hover:scale-105 transition-transform">
-                            ${isIncome ? 'Abono (+)' : 'Cargo (-)'}
-                        </button>
-                    </td>
-                    <td class="px-4 py-2 text-center">
-                        <button onclick="removeImportItem(${index})" class="text-red-400 hover:text-red-600 font-bold">&times;</button>
-                    </td>
-            `;
-                    importList.appendChild(tr);
-                });
-            };
-
-            window.toggleImportItemSign = (index) => {
-                pendingImportData[index].amount = -pendingImportData[index].amount;
-                renderImportPreview();
-            };
-
-            window.removeImportItem = (index) => {
-                pendingImportData.splice(index, 1);
-                renderImportPreview();
-            };
-
-            document.getElementById('confirm-import-btn').onclick = () => {
-                const targetCardId = targetCardSelect.value;
-                const cardInfo = CARDS[targetCardId];
-
-                let count = 0;
-                pendingImportData.forEach(item => {
-                    expenses.push({
-                        id: Date.now() + Math.random(),
-                        description: item.description,
-                        amount: item.amount,
-                        currency: 'MXN',
-                        paymentMethod: 'Tarjeta',
-                        cardInfo: cardInfo,
-                        installments: 0,
-                        date: item.date
-                    });
-                    count++;
-                });
-
-                saveData();
-                updateUI();
-                importModal.classList.add('hidden');
-                showFeedback(`¡${count} movimientos importados a ${cardInfo.name} !`);
-            };
-
-            document.getElementById('close-import-btn').onclick = () => importModal.classList.add('hidden');
-            document.getElementById('cancel-import-btn').onclick = () => importModal.classList.add('hidden');
-
-
-            document.getElementById('download-template-btn').onclick = () => {
-                const data = [
-                    { "Fecha": "2025-11-01", "Concepto": "Ej: Supermercado", "Monto": 1500, "Tipo": "Cargo", "Tarjeta": "Banamex Débito", "MSI": 0 },
-                    { "Fecha": "2025-11-05", "Concepto": "Pago Tarjeta", "Monto": 500, "Tipo": "Abono", "Tarjeta": "Banamex Joy", "MSI": 0 }
-                ];
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
-                XLSX.writeFile(wb, "Plantilla_Gastos.xlsx");
-            };
-
-            // --- REPORTE ---
-            document.getElementById('generate-report-btn').onclick = () => {
-                const modal = document.getElementById('report-modal');
-                const content = document.getElementById('report-summary-content');
-
-                const totalSpent = expenses.filter(e => e.amount > 0).reduce((a, b) => a + b.amount, 0);
-                const totalIncome = expenses.filter(e => e.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
-
-                content.innerHTML = `
-                < div class="flex justify-between" ><span>Total Gastado:</span> <b>${formatMoney(totalSpent)}</b></div >
-                <div class="flex justify-between text-green-600"><span>Total Ingresos/Pagos:</span> <b>${formatMoney(totalIncome)}</b></div>
-                <div class="flex justify-between mt-2 pt-2 border-t border-slate-200"><span>Movimientos:</span> <b>${expenses.length}</b></div>
-            `;
-
-                modal.classList.remove('hidden');
-            };
-
-            document.getElementById('close-report-btn').onclick = () => {
-                document.getElementById('report-modal').classList.add('hidden');
-            };
-
-            document.getElementById('download-excel-btn').onclick = () => {
-                const data = expenses.map(e => ({
-                    Fecha: e.date,
-                    Concepto: e.description,
-                    Monto: Math.abs(e.amount),
-                    Tipo: e.amount < 0 ? 'Abono' : 'Cargo',
-                    Tarjeta: e.cardInfo ? e.cardInfo.name : 'N/A',
-                    MSI: e.installments || 0,
-                    Pago_Mensual_Real: (e.installments > 0 ? (e.amount / e.installments) : e.amount).toFixed(2)
-                }));
-
-                const ws = XLSX.utils.json_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Reporte_Detallado");
-                XLSX.writeFile(wb, "Reporte_Finanzas_Mama.xlsx");
-                document.getElementById('report-modal').classList.add('hidden');
-            };
-
-            // --- HELPERS VISUALES ---
-            const getBorderColor = (colorName) => {
-                const map = {
-                    'red': 'border-l-red-500',
-                    'pink': 'border-l-pink-500',
-                    'green': 'border-l-green-500',
-                    'emerald': 'border-l-emerald-500',
-                    'gray': 'border-l-gray-500',
-                    'amber': 'border-l-amber-500'
-                };
-                return map[colorName] || 'border-l-blue-500';
-            };
-
-            const showFeedback = (msg) => {
-                const el = document.getElementById('feedback-msg');
-                el.textContent = msg;
-                el.classList.remove('hidden');
-                el.className = 'text-center text-sm font-bold mt-4 text-green-600 animate-bounce';
-                setTimeout(() => el.classList.add('hidden'), 3000);
-            };
-
-            document.getElementById('reset-app-btn').onclick = () => {
-                if (confirm("⚠️ ¿Estás segura? Se borrarán todos los datos.")) {
-                    localStorage.removeItem(STORAGE_KEY);
-                    localStorage.removeItem(BALANCE_KEY);
-                    location.reload();
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const content = await page.getTextContent();
+                    const strings = content.items.map(item => item.str);
+                    fullText += strings.join(" | ") + "\n";
                 }
-            };
 
-            // --- RESPALDO Y MIGRACIÓN ---
-            window.exportBackup = () => {
-                const data = {
-                    expenses: expenses,
-                    initialBalances: initialBalances,
-                    timestamp: new Date().toISOString()
-                };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `finanzas_backup_${new Date().toISOString().slice(0, 10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showFeedback("¡Respaldo descargado! 💾");
-            };
+                pendingImportData = parseBankText(fullText);
 
-            window.restoreBackup = (input) => {
-                const file = input.files[0];
-                if (!file) return;
+                if (pendingImportData.length > 0) {
+                    openImportPreview();
+                } else {
+                    alert("No se detectaron movimientos claros en el PDF. Intenta copiar y pegar en Excel.");
+                }
 
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (data.expenses && data.initialBalances) {
-                            if (confirm(`¿Restaurar respaldo del ${new Date(data.timestamp).toLocaleDateString()}? Esto reemplazará los datos actuales.`)) {
-                                expenses = data.expenses;
-                                initialBalances = data.initialBalances;
-                                saveData();
-                                updateUI();
-                                showFeedback("¡Datos restaurados con éxito! 🚀");
-                            }
-                        } else {
-                            alert("El archivo no parece ser un respaldo válido.");
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        alert("Error al leer el archivo de respaldo.");
+            } catch (err) {
+                console.error(err);
+                alert("Error leyendo el PDF.");
+            }
+        };
+
+        const parseBankText = (text) => {
+            const lines = text.split('\n');
+            const results = [];
+
+            const dateRegex = /(\d{2}[\/\-]\w{3}|\d{2}\/\d{2}\/\d{2,4})/;
+            const moneyRegex = /(\$?\d{1,3}(,\d{3})*(\.\d{2}))/;
+
+            lines.forEach(line => {
+                const cleanLine = line.replace(/\|/g, ' ').trim();
+                const dateMatch = cleanLine.match(dateRegex);
+                const moneyMatch = cleanLine.match(moneyRegex);
+
+                if (dateMatch && moneyMatch) {
+                    let dateStr = dateMatch[0];
+                    let amountStr = moneyMatch[0].replace(/[$,]/g, '');
+                    let amount = parseFloat(amountStr);
+
+                    let desc = cleanLine.replace(dateMatch[0], '').replace(moneyMatch[0], '').trim();
+                    desc = desc.replace(/\s+/g, ' ').substring(0, 40);
+
+                    let formattedDate = new Date().toISOString().slice(0, 10);
+
+                    const isPayment = /abono|pago|depósito|su pago|recepcion/i.test(cleanLine);
+                    if (isPayment) {
+                        amount = -Math.abs(amount);
                     }
-                    input.value = ''; // Reset input
-                };
-                reader.readAsText(file);
-            };
 
-            // Init
-            document.getElementById('date').value = new Date().toISOString().slice(0, 10);
-            loadData();
+                    if (desc.length > 3 && !isNaN(amount)) {
+                        results.push({
+                            description: desc,
+                            amount: amount,
+                            date: formattedDate
+                        });
+                    }
+                }
+            });
+            return results;
+        };
+
+        // --- HELPERS VISUALES ---
+        const showFeedback = (msg) => {
+            const el = document.getElementById('feedback-msg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            el.className = 'text-center text-sm font-bold mt-4 text-green-600 animate-bounce';
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        };
+
+        document.getElementById('reset-app-btn').onclick = () => {
+            if (confirm("⚠️ ¿Estás segura? Se borrarán todos los datos.")) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(BALANCE_KEY);
+                location.reload();
+            }
+        };
+
+        // --- RESPALDO Y MIGRACIÓN ---
+        window.exportBackup = () => {
+            const data = {
+                expenses: expenses,
+                initialBalances: initialBalances,
+                timestamp: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `finanzas_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showFeedback("¡Respaldo descargado! 💾");
+        };
+
+        window.restoreBackup = (input) => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.expenses && data.initialBalances) {
+                        if (confirm(`¿Restaurar respaldo del ${new Date(data.timestamp).toLocaleDateString()}? Esto reemplazará los datos actuales.`)) {
+                            expenses = data.expenses;
+                            initialBalances = data.initialBalances;
+                            saveData();
+                            updateUI();
+                            showFeedback("¡Datos restaurados con éxito! 🚀");
+                        }
+                    } else {
+                        alert("El archivo no parece ser un respaldo válido.");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Error al leer el archivo de respaldo.");
+                }
+                input.value = ''; // Reset input
+            };
+            reader.readAsText(file);
+        };
+
+        // --- INIT ---
+        document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+        loadData();
+        updateUI();
+
+        document.getElementById('filter-card-select').onchange = (e) => {
+            currentFilter = e.target.value;
             updateUI();
+        };
 
-            document.getElementById('filter-card-select').onchange = (e) => {
-                currentFilter = e.target.value;
-                updateUI();
-            };
-
-            document.getElementById('filter-date-select').onchange = (e) => {
-                currentDateFilter = e.target.value;
-                renderExpenses();
-            };
-
+        document.getElementById('filter-date-select').onchange = (e) => {
+            currentDateFilter = e.target.value;
+            renderExpenses();
+        };
     </script>
 </body>
 
