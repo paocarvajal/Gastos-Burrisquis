@@ -14,6 +14,26 @@ export const PaymentAlerts: React.FC<PaymentAlertsProps> = ({ cards, expenses, i
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
+    // --- Dismissal Logic ---
+    const [dismissedKeys, setDismissedKeys] = React.useState<string[]>([]);
+
+    React.useEffect(() => {
+        const stored = localStorage.getItem('finance_tracker_dismissed_alerts');
+        if (stored) {
+            try {
+                setDismissedKeys(JSON.parse(stored));
+            } catch (e) {
+                console.error("Failed to parse dismissed alerts", e);
+            }
+        }
+    }, []);
+
+    const handleDismiss = (alertKey: string) => {
+        const newKeys = [...dismissedKeys, alertKey];
+        setDismissedKeys(newKeys);
+        localStorage.setItem('finance_tracker_dismissed_alerts', JSON.stringify(newKeys));
+    };
+
     const alerts = Object.values(cards)
         .filter(card => card.type === 'credit' && card.cutoffDay && card.gracePeriod)
         .map(card => {
@@ -43,6 +63,12 @@ export const PaymentAlerts: React.FC<PaymentAlertsProps> = ({ cards, expenses, i
                 const diff = (d.getTime() - today.getTime()) / (1000 * 3600 * 24);
                 return diff >= -5;
             }) || candidates[candidates.length - 1];
+
+            // Unique Key for this specific alert instance
+            const titleDate = targetDueDate.toISOString().split('T')[0];
+            const alertKey = `${card.id}_${titleDate}`;
+
+            if (dismissedKeys.includes(alertKey)) return null;
 
             // 4. Identify the Relevant Cutoff Date for this target due date
             // The logic: targetDueDate = relevantCutoff + gracePeriod.
@@ -97,6 +123,7 @@ export const PaymentAlerts: React.FC<PaymentAlertsProps> = ({ cards, expenses, i
 
             return {
                 card,
+                alertKey,
                 diffDays,
                 formattedDate: targetDueDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }),
                 cutoffDateDisplay: relevantCutoffDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }),
@@ -111,12 +138,28 @@ export const PaymentAlerts: React.FC<PaymentAlertsProps> = ({ cards, expenses, i
 
     return (
         <section className="animate-in fade-in slide-in-from-top-4 mb-6">
-            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
-                🔔 Alertas de Pago Próximas
-            </h2>
+            <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    🔔 Alertas de Pago Próximas
+                </h2>
+                {dismissedKeys.length > 0 && (
+                    <button
+                        onClick={() => {
+                            if (confirm("¿Restaurar alertas ocultas?")) {
+                                setDismissedKeys([]);
+                                localStorage.removeItem('finance_tracker_dismissed_alerts');
+                            }
+                        }}
+                        className="text-[10px] text-slate-400 underline hover:text-slate-600"
+                    >
+                        Restaurar ocultas ({dismissedKeys.length})
+                    </button>
+                )}
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {(alerts as any[]).map((alert, idx) => (
-                    <div key={idx} className="bg-white dark:bg-slate-800 border-l-4 border-l-pink-500 dark:border-l-pink-400 rounded-r-xl shadow-lg p-4 flex flex-col justify-between relative overflow-hidden">
+                    <div key={idx} className="bg-white dark:bg-slate-800 border-l-4 border-l-pink-500 dark:border-l-pink-400 rounded-r-xl shadow-lg p-4 flex flex-col justify-between relative overflow-hidden group">
 
                         <div className="flex justify-between items-start mb-4 z-10 relative">
                             <div>
@@ -157,11 +200,19 @@ export const PaymentAlerts: React.FC<PaymentAlertsProps> = ({ cards, expenses, i
                             </div>
                         )}
 
-                        <div className="text-center mt-1 z-10">
+                        <div className="flex justify-between items-center z-10 mt-1">
                             <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${alert.diffDays <= 3 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-orange-100 text-orange-600'
                                 }`}>
                                 {alert.diffDays <= 0 ? (alert.diffDays === 0 ? '¡Vence Hoy!' : `Venció hace ${Math.abs(alert.diffDays)} días`) : `Faltan ${alert.diffDays} días`}
                             </span>
+
+                            <button
+                                onClick={() => handleDismiss(alert.alertKey)}
+                                className="text-xs font-bold text-slate-400 hover:text-emerald-500 flex items-center gap-1 transition-colors px-2 py-1 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700"
+                                title="Marcar como atendido este mes (no borra la deuda)"
+                            >
+                                ✅ Ya pagué
+                            </button>
                         </div>
                     </div>
                 ))}
