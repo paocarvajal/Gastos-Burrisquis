@@ -6,17 +6,19 @@ interface PaymentModalProps {
     onClose: () => void;
     cardId: string | null;
     cards: Record<string, Card>;
-    onConfirm: (amount: number, date: string) => void;
+    onConfirm: (amount: number, date: string, sourceCardId: string | null) => void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, cardId, cards, onConfirm }) => {
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState('');
+    const [sourceCardId, setSourceCardId] = useState('');
 
     useEffect(() => {
         if (isOpen) {
             setAmount('');
             setDate(new Date().toISOString().slice(0, 10));
+            setSourceCardId('');
         }
     }, [isOpen]);
 
@@ -25,10 +27,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, car
     const card = cards[cardId];
     if (!card) return null;
 
+    const debitCards = Object.values(cards).filter(c => c.type === 'debit');
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!amount) return;
-        onConfirm(parseFloat(amount), date);
+        onConfirm(parseFloat(amount), date, sourceCardId || null);
         onClose();
     };
 
@@ -62,6 +66,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, car
                             />
                         </div>
                     </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Pagar desde (Opcional)</label>
+                        <select
+                            value={sourceCardId}
+                            onChange={(e) => setSourceCardId(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-green-500 outline-none"
+                        >
+                            <option value="">Ninguna (Solo registrar pago)</option>
+                            {debitCards.map(c => (
+                                <option key={c.id} value={c.id}>{c.name} (Saldo: ???)</option>
+                            ))}
+                        </select>
+                        <p className="text-[10px] text-slate-400 mt-1">Si seleccionas una cuenta, se descontará el dinero de ella.</p>
+                    </div>
+
                     <div>
                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Fecha</label>
                         <input

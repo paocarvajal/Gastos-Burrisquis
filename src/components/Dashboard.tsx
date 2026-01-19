@@ -8,7 +8,11 @@ import { TransactionsList } from './TransactionsList';
 import { PaymentModal } from './PaymentModal';
 import { ImportPreviewModal } from './ImportPreviewModal';
 import { ToolsSection } from './ToolsSection';
+import { PaymentAlerts } from './PaymentAlerts';
 import { AccountsManager } from './AccountsManager';
+import { CloudSync } from './CloudSync';
+// ... (imports)
+
 
 
 const STORAGE_KEY = 'finance_tracker_data_v1';
@@ -17,12 +21,7 @@ const CARDS_KEY = 'finance_tracker_cards_v1';
 const THEME_KEY = 'finance_tracker_theme_v1';
 
 const DEFAULT_CARDS: Record<string, Card> = {
-    banamex_debito: { id: 'banamex_debito', name: "Banamex Débito", type: "debit", color: "bg-blue-600" },
-    banamex_joy: { id: 'banamex_joy', name: "Banamex Joy", type: "credit", color: "bg-pink-500", cutoffDay: 15, paymentDay: 5 },
-    banorte_debito: { id: 'banorte_debito', name: "Banorte Débito", type: "debit", color: "bg-red-600" },
-    banorte_credito: { id: 'banorte_credito', name: "Banorte Crédito", type: "credit", color: "bg-red-700", cutoffDay: 10, paymentDay: 30 },
-    bienestar: { id: 'bienestar', name: "Bienestar", type: "debit", color: "bg-emerald-500" },
-    invex_aeropuerto: { id: 'invex_aeropuerto', name: "Invex Aeropuerto", type: "credit", color: "bg-slate-800", cutoffDay: 20, paymentDay: 10 }
+    efectivo: { id: 'efectivo', name: "Efectivo / Cartera", type: "debit", color: "bg-emerald-500" }
 };
 
 export default function Dashboard() {
@@ -144,26 +143,54 @@ export default function Dashboard() {
 
 
 
+    const handleEditCard = (updatedCard: Card) => {
+        setCards(prev => ({ ...prev, [updatedCard.id]: updatedCard }));
+    };
+
+    const handleUpdateInitialBalance = (cardId: string, amount: number) => {
+        setInitialBalances(prev => ({ ...prev, [cardId]: amount }));
+    };
+
     const handlePay = (cardId: string) => {
         setPaymentCardId(cardId);
         setIsPaymentModalOpen(true);
     };
 
-    const handleConfirmPayment = (amount: number, date: string) => {
+    const handleConfirmPayment = (amount: number, date: string, sourceCardId: string | null) => {
         if (!paymentCardId) return;
 
+        const newExpenses: Expense[] = [];
+
+        // 1. The Payment (Income) to the Credit Card
         const payment: Expense = {
             id: Date.now(),
             description: "PAGO A TARJETA",
             amount: Math.abs(amount), // Payments are positive
             currency: "MXN",
-            paymentMethod: "Tarjeta",
+            paymentMethod: "Transferencia", // Changed to Transferencia as it's more accurate usually
             cardId: paymentCardId,
             installments: 0,
             date: date
         };
+        newExpenses.push(payment);
 
-        setExpenses(prev => [...prev, payment]);
+        // 2. The Expense (Outcome) from the Debit Card (if selected)
+        if (sourceCardId) {
+            const sourceCard = cards[sourceCardId];
+            const expense: Expense = {
+                id: Date.now() + 1, // Ensure unique ID
+                description: `PAGO A ${cards[paymentCardId]?.name || 'TARJETA'}`,
+                amount: -Math.abs(amount), // Expense is negative
+                currency: "MXN",
+                paymentMethod: "Transferencia",
+                cardId: sourceCardId,
+                installments: 0,
+                date: date
+            };
+            newExpenses.push(expense);
+        }
+
+        setExpenses(prev => [...prev, ...newExpenses]);
     };
 
     const handleAdjust = (cardId: string) => {
@@ -256,14 +283,23 @@ export default function Dashboard() {
                 </div>
             </header>
 
+            <PaymentAlerts
+                cards={cards}
+                expenses={expenses}
+                initialBalances={initialBalances}
+            />
+
             <AccountsManager
                 cards={cards}
+                initialBalances={initialBalances}
                 onAddCard={handleAddCard}
+                onEditCard={handleEditCard}
                 onDeleteCard={handleDeleteCard}
+                onUpdateInitialBalance={handleUpdateInitialBalance}
             />
 
             <section>
-                <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
                     💳 Estado de Cuentas
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -272,7 +308,6 @@ export default function Dashboard() {
                         if (!card) return null;
                         // Filter movements for this card
                         const cardMovs = expenses.filter(e =>
-                            e.paymentMethod === 'Tarjeta' &&
                             (e.cardId === key || (e as any).cardInfo?.name === card.name)
                         );
 
@@ -329,8 +364,15 @@ export default function Dashboard() {
                 cards={cards}
             />
 
-
-
+            <CloudSync
+                dataToSave={{ expenses, balances: initialBalances, cards, theme }}
+                onLoadData={(data) => {
+                    if (data.expenses) setExpenses(data.expenses);
+                    if (data.balances) setInitialBalances(data.balances);
+                    if (data.cards) setCards(data.cards);
+                    if (data.theme) setTheme(data.theme);
+                }}
+            />
 
         </div>
     );

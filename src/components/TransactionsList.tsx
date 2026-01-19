@@ -28,7 +28,7 @@ export const TransactionsList: React.FC<TransactionsListProps> = ({ expenses, ca
     const filteredExpenses = expenses.filter(e => {
         const dateMatch = filterDate === 'all' || e.date.startsWith(filterDate);
         const cardMatch = filterCard === 'all' ||
-            (e.paymentMethod === 'Tarjeta' && (e.cardId === filterCard || (e as any).cardInfo?.name === cards[filterCard]?.name));
+            (e.cardId === filterCard || (e as any).cardInfo?.name === cards[filterCard]?.name);
         return dateMatch && cardMatch;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 

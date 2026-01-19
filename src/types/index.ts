@@ -6,7 +6,8 @@ export interface Card {
     type: CardType;
     color: string;
     cutoffDay?: number;
-    paymentDay?: number;
+    gracePeriod?: number; // Days after cutoff date to pay (e.g., 20)
+    interestRate?: number; // Annual interest rate percentage (e.g., 50 for 50%)
 }
 
 export interface Expense {
