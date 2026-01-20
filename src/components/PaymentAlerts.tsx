@@ -190,15 +190,7 @@ export const PaymentAlerts: React.FC<PaymentAlertsProps> = ({ cards, expenses, i
                             </div>
                         </div>
 
-                        {alert.estimatedInterest > 0 && (
-                            <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded-lg border border-red-100 dark:border-red-800/30 flex items-center gap-2 mb-3 z-10">
-                                <span className="text-xl">💸</span>
-                                <div className="leading-none">
-                                    <p className="text-[10px] font-bold text-red-500 uppercase">Riesgo de Interés (+IVA)</p>
-                                    <p className="font-bold text-red-700 dark:text-red-400 text-sm">~{formatMoney(alert.estimatedInterest)}</p>
-                                </div>
-                            </div>
-                        )}
+
 
                         <div className="flex justify-between items-center z-10 mt-1">
                             <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${alert.diffDays <= 3 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-orange-100 text-orange-600'

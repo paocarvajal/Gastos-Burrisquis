@@ -66,6 +66,19 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ card, initialBalance, 
                         <span>Mensualidad Est. (MSI):</span>
                         <span className="font-bold text-slate-600 dark:text-slate-300">{formatMoney(monthlyPaymentDue)}</span>
                     </p>
+
+                    {card.interestRate && currentDebt > 0 && (
+                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px]">
+                            <p className="flex justify-between text-rose-500 dark:text-rose-400 font-bold mb-0.5">
+                                <span>💸 Costo Diario (Interés + IVA):</span>
+                                <span>{formatMoney(((currentDebt * (card.interestRate / 100)) / 360) * 1.16)}</span>
+                            </p>
+                            <p className="flex justify-between text-slate-400">
+                                <span>Tasa Anual:</span>
+                                <span>{card.interestRate}%</span>
+                            </p>
+                        </div>
+                    )}
                 </div>
             </>
         );
@@ -92,7 +105,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ card, initialBalance, 
                         <div className="flex gap-2 text-[10px] text-slate-400 mt-0.5">
                             <span>Corte: Día {card.cutoffDay || '?'}</span>
                             <span>•</span>
-                            <span>Pago: Día {card.paymentDay || '?'}</span>
+                            <span>Pago: {card.gracePeriod ? `+${card.gracePeriod}d` : `Día ${card.paymentDay || '?'}`}</span>
                         </div>
                     )}
                 </div>
